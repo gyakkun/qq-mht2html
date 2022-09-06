@@ -2,7 +2,7 @@ import java.io.RandomAccessFile
 
 class Sunday(
     private val raf: RandomAccessFile,
-    private val initOffset: Long,
+    initOffset: Long,
     private val pattern: ByteArray,
     private val bufSize: Int = 1 shl 20
 ) {
@@ -24,7 +24,7 @@ class Sunday(
         outer@
         while (rafOffSet <= raf.length()) {
             raf.seek(rafOffSet)
-            var readBufLen = raf.read(buf)
+            val readBufLen = raf.read(buf)
             if (readBufLen == -1) return -1L
             var bufOffset = 0
             inner@
