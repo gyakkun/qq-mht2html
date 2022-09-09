@@ -34,8 +34,8 @@ fun main() = application {
 private fun App(windowScope: FrameWindowScope) {
     var showDialog by remember { mutableStateOf(false) }
     var threadCountStr by remember { mutableStateOf(Runtime.getRuntime().availableProcessors().toString()) }
-    var mhtFileLocation by remember { mutableStateOf("C:\\Windows\\notepad.exe") }
-    var fileOutputLocation by remember { mutableStateOf("C:\\") }
+    var mhtFileLocation by remember { mutableStateOf("E:\\[ToBak]\\Desktop_Win10\\咕咕瓜的避难窝.mht") }
+    var fileOutputLocation by remember { mutableStateOf("U:\\") }
     var imgFileOutputFolder by remember { mutableStateOf("img") }
     var errMsg = remember { mutableStateOf("Error message.") }
     var showAlert = remember { mutableStateOf(false) }
@@ -133,6 +133,7 @@ private fun App(windowScope: FrameWindowScope) {
                             }
                             Mht2Html.doJob(
                                 mhtFileLocation,
+                                fileOutputLocation,
                                 File(fileOutputLocation).resolve(imgFileOutputFolder).absolutePath,
                                 tc,
                                 showAlert,

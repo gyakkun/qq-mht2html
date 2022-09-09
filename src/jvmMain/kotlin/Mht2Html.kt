@@ -1,5 +1,4 @@
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.ReceiveChannel
@@ -9,6 +8,8 @@ import org.apache.commons.imaging.Imaging
 import java.io.File
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
+import java.lang.StringBuilder
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 
 @ExperimentalMaterialApi
@@ -24,6 +25,7 @@ object Mht2Html {
 
     fun doJob(
         fileLocation: String,
+        fileOutputPath: String,
         imgOutputPath: String,
         threadCount: Int = THREAD_COUNT,
         showAlert: MutableState<Boolean>?,
@@ -35,8 +37,7 @@ object Mht2Html {
         Mht2Html.progress = progress
         System.err.println("Thread count: $threadCount")
 
-        errMsg?.value = ""
-        showAlert?.value = false
+        showInfoBar(showAlert, errMsg, "Processing Images...", 5_000)
 
         val tp = newFixedThreadPoolContext(threadCount + 1, "mht2html") // 1 more thread for producer
         var timing: Long = System.currentTimeMillis()
@@ -61,8 +62,12 @@ object Mht2Html {
                 break
             }
             if (raf.filePointer > 1000) {
-                showAlert?.value = true
-                errMsg?.value = "Boundary not found in the first 1000 Bytes. MHT file may be not valid."
+                showInfoBar(
+                    showAlert,
+                    errMsg,
+                    "Boundary not found in the first 1000 Bytes. MHT file may be not valid.",
+                    3_000
+                )
                 return@launch
             }
         }
@@ -73,20 +78,89 @@ object Mht2Html {
 
         System.err.println(BOUNDARY)
         val sunday = Sunday(raf, 0L, BOUNDARY.toByteArray())
+        val offsetList = ArrayList<Long>()
+//        GlobalScope.launch(tp) {
+//            val producer = produceOffSet(fileLocation, sunday, offsetList) // The 1 more thread
+//            repeat(threadCount) {
+//                launchConsumer(it, fileLocation, imgOutputFolder, latchList[it], producer)
+//            }
+//        }
 
-        GlobalScope.launch(tp) {
-            val producer = produceOffSet(fileLocation, sunday, ArrayList()) // The 1 more thread
-            repeat(threadCount) {
-                launchConsumer(it, fileLocation, imgOutputFolder, latchList[it], producer)
+//        for (latch in latchList) latch.await()
+        showInfoBar(showAlert, errMsg, "Processing HTML...", 5_000L)
+        processHtml(fileLocation, ArrayList<Long>().apply { add(sunday.getNextOffSet()) }, fileOutputPath)
+        val timingMsg = "TOTAL: Timing: ${System.currentTimeMillis() - timing} ms"
+        showInfoBar(showAlert, errMsg, timingMsg, 60_000L)
+    }
+
+    private fun processHtml(fileLocation: String, offsetList: java.util.ArrayList<Long>, fileOutputPath: String) {
+        val dateRegex = Regex("日期 (\\d{4}-\\d{2}-\\d{2})")
+        val styleClassNameMap = ConcurrentHashMap<String, String>()
+        var lineCounter = 0
+        val endOfFile = "</table></body></html>"
+        val raf = RandomAccessFile(fileLocation, "r")
+        val firstBoundaryOffset = offsetList[0]
+        raf.seek(firstBoundaryOffset)
+        var line: String
+        var firstLineOffset = -1L
+        while (raf.readLine().also { line = it } != null) {
+            if (line.isEmpty()) {
+                firstLineOffset = raf.filePointer
+                break;
             }
         }
+        var counter = 0
+        raf.seek(firstLineOffset)
+        while (counter++ < 10) {
+            val line = raf.readLine()
+            extractAndReplaceStyle(line, styleClassNameMap)
+        }
+        TODO("Not yet implemented")
+    }
 
-        for (latch in latchList) latch.await()
-        val timingMsg = "TOTAL: Timing: ${System.currentTimeMillis() - timing} ms"
+    private fun extractAndReplaceStyle(line: String, styleClassNameMap: MutableMap<String, String>): String {
+        val stylePrefix = "style="
+        val stylePrefixWithQuote = "style=\""
+        val suffix = ">"
+        val suffixWithQuote = "\""
+        var prevIndex = 0
+        val sb = StringBuilder()
+        var tmpIndex = 0
+        var isWithQuote = false
+        while (line.indexOf(stylePrefix, prevIndex).also { tmpIndex = it } > 0) {
+            val startOfStyleAttribute = tmpIndex
+            isWithQuote = line[tmpIndex + stylePrefix.length] == '"'
+            var endOfStyleAttribute: Int
+            var styleSheet = if (isWithQuote) {
+                endOfStyleAttribute =
+                    line.indexOf(suffixWithQuote, startOfStyleAttribute + stylePrefixWithQuote.length)
+                line.substring(startOfStyleAttribute + stylePrefixWithQuote.length, endOfStyleAttribute)
+            } else {
+                endOfStyleAttribute = line.indexOf(suffix, startOfStyleAttribute + stylePrefix.length)
+                line.substring(startOfStyleAttribute + stylePrefix.length, endOfStyleAttribute)
+            }
+            if (!styleClassNameMap.contains(styleSheet)) {
+                val className = "stl-" + (styleClassNameMap.size + 1)
+                styleClassNameMap.put(styleSheet, className)
+            }
+            sb.append(line.substring(prevIndex, startOfStyleAttribute))
+            sb.append("class=\"${styleClassNameMap[styleSheet]!!}\"")
+            prevIndex = endOfStyleAttribute
+        }
+        sb.append(line.substring(prevIndex))
+        return sb.toString().also { System.err.println(it) }
+    }
+
+    private suspend fun CoroutineScope.showInfoBar(
+        showAlert: MutableState<Boolean>?,
+        errMsg: MutableState<String>?,
+        msg: String,
+        delayMs: Long = 1_000L
+    ) = launch {
         showAlert?.value = true
-        errMsg?.value = "Finished. $timingMsg"
-        System.err.println("TOTAL: Timing: ${System.currentTimeMillis() - timing} ms")
-        delay(60_0000)
+        errMsg?.value = msg
+        System.err.println(msg)
+        delay(delayMs)
         showAlert?.value = false
         errMsg?.value = ""
     }
