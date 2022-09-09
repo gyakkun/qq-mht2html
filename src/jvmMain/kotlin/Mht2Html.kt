@@ -9,14 +9,16 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
 import java.util.*
+import java.util.concurrent.CountDownLatch
+import kotlin.collections.ArrayList
 import kotlin.random.Random
 
 object Mht2Html {
     lateinit var raf: RandomAccessFile
     lateinit var BOUNDARY: String
     val offsetOfNextPartChannel = Channel<Triple<UUID, Long, Long>>()
-    val FILE_LOCATION = "U:\\[U2CSM][BD外挂字幕群].mht"
-    val IMG_OUTPUT_PATH = "E:\\U2CSM_Groupchat_History_From_161123\\TEST"
+    val FILE_LOCATION = "U:\\纯洁的DD隔离病院.mht"
+    val IMG_OUTPUT_PATH = "U:\\byr_img"
 
     fun job() {
         var timing: Long = System.currentTimeMillis()
@@ -44,11 +46,14 @@ object Mht2Html {
         var limit = 10
         var nextOffset = -1L
         val offsetList: MutableList<Long> = ArrayList()
+        val latchList = ArrayList<CountDownLatch>()
         // val base64Decoder = Base64.
         while (/*counter < limit &&*/ (sunday.getNextOffSet().also { nextOffset = it } > 0L)) {
             offsetList.add(nextOffset)
             val ls = offsetList.size
             if (ls > 2) {
+                val latch = CountDownLatch(1)
+                latchList.add(latch)
                 GlobalScope.launch {
                     val offset = offsetList[ls - 2]
                     val thisScope = offsetList[ls - 1] - offsetList[ls - 2]
@@ -59,7 +64,7 @@ object Mht2Html {
                     while (tmpRaf.readLine().also { line = it } != null) {
                         if (line.contains("Content-Location")) {
                             uuid = line.substring("Content-Location:{".length, line.indexOf("}.dat"))
-                            System.err.println(uuid)
+                            // System.err.println(uuid)
                             tmpRaf.readLine()
                             break
                         }
@@ -70,16 +75,16 @@ object Mht2Html {
 //                        sb.append(line)
 //                    }
 
-                val beginOffsetOfB64 = tmpRaf.filePointer
-                val endOffsetOfB64 = offsetList[ls - 1]
-                val b64Len = endOffsetOfB64 - beginOffsetOfB64
-                val ba = ByteArray(b64Len.toInt())
-                tmpRaf.seek(beginOffsetOfB64)
-                tmpRaf.read(ba)
-                val decode = Base64.decodeBase64(ba)
-                val baos = ByteArrayOutputStream()
-                baos.write(decode)
-                val fileExt = Imaging.guessFormat(decode).extension
+                    val beginOffsetOfB64 = tmpRaf.filePointer
+                    val endOffsetOfB64 = offsetList[ls - 1]
+                    val b64Len = endOffsetOfB64 - beginOffsetOfB64
+                    val ba = ByteArray(b64Len.toInt())
+                    tmpRaf.seek(beginOffsetOfB64)
+                    tmpRaf.read(ba)
+                    val decode = Base64.decodeBase64(ba)
+                    val baos = ByteArrayOutputStream()
+                    baos.write(decode)
+                    val fileExt = Imaging.guessFormat(decode).extension
 
 //                    val decode = base64Decoder.decode(sb.toString())
 //                    val baos = ByteArrayOutputStream()
@@ -90,10 +95,12 @@ object Mht2Html {
                     fos.write(decode)
                     fos.flush()
                     fos.close()
+                    latch.countDown()
                 }
             }
             counter++
         }
+        for (latch in latchList) latch.await()
         timing = System.currentTimeMillis() - timing
         System.err.println("TOTAL: $counter offset detected. Timing: $timing ms")
     }
