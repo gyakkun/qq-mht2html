@@ -115,7 +115,12 @@ object Mht2Html {
             val line = raf.readLine()
             extractAndReplaceStyle(line, styleClassNameMap)
         }
-        TODO("Not yet implemented")
+        // TODO: Extract the first line
+        // Add progress update
+        // Construct Write back style sheet
+        // Lazy load of image
+        // Date handling
+        // Paging
     }
 
     private fun extractAndReplaceStyle(line: String, styleClassNameMap: MutableMap<String, String>): String {
