@@ -29,3 +29,4 @@
 ## 参考
 
 * https://github.com/a645162/QQChatRecordMhtToHtmlTool (已经删除/私有。其中一个Fork: https://github.com/bushrose/QQChatRecordMhtToHtmlTool)
+* 图标: https://www.pixiv.net/artworks/91517955
