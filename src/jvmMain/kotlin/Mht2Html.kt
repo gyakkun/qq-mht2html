@@ -5,13 +5,7 @@ import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.produce
 import org.apache.commons.codec.binary.Base64
 import org.apache.commons.imaging.Imaging
-import java.io.BufferedWriter
-import java.io.File
-import java.io.FileOutputStream
-import java.io.FileWriter
-import java.io.RandomAccessFile
-import java.lang.RuntimeException
-import java.lang.StringBuilder
+import java.io.*
 import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.time.LocalTime
@@ -20,8 +14,6 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.CountDownLatch
-import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
 import kotlin.text.Charsets.UTF_8
 
 @ExperimentalMaterialApi
@@ -70,7 +62,7 @@ object Mht2Html {
             if (line.contains("boundary=\"")) {
                 BOUNDARY = "--" + line.substring(line.indexOf("=") + 2, line.length - 1)
                 fileOffset = raf.filePointer
-                System.err.println(fileOffset)
+                System.err.println("First boundary offset: $fileOffset")
                 break
             }
             if (raf.filePointer > 1000) {
@@ -88,7 +80,7 @@ object Mht2Html {
             latchList.add(CountDownLatch(1))
         }
 
-        System.err.println(BOUNDARY)
+        System.err.println("Boundary: $BOUNDARY")
         val sunday = Sunday(raf, 0L, BOUNDARY.toByteArray())
         val offsetList = ArrayList<Long>()
         GlobalScope.launch(tp) {
@@ -116,6 +108,7 @@ object Mht2Html {
         String(rawLine.toByteArray(Charset.forName("ISO-8859-1")), UTF_8)
     }
 
+    const val END_OF_HTML = "</table></body></html>"
     private fun processHtml(
         fileLocation: String,
         offsetList: java.util.ArrayList<Long>,
@@ -125,8 +118,6 @@ object Mht2Html {
     ) {
         val styleClassNameMap = ConcurrentHashMap<String, String>()
         val lineDeque = ConcurrentLinkedDeque<String>()
-        var lineCounter = 0
-        val endOfHtml = "</table></body></html>"
         val raf = RandomAccessFile(fileLocation, "r")
         val imgOutputFolder = File(imgOutputPath)
         val imgFileNameExtensionMap: Map<String, String> = getImgFileNameExtensionMap(imgOutputFolder)
@@ -137,10 +128,10 @@ object Mht2Html {
         while (raf.readLineInUtf8().also { line = it } != null) {
             if (line.isEmpty()) {
                 firstLineOffset = raf.filePointer
-                break;
+                break
             }
         }
-        var counter = 0
+
         raf.seek(firstLineOffset)
         val firstLine = raf.readLineInUtf8()
         val (remainOfFirstLine, htmlHeadTemplate, globalStyleSheet, startDateInUTC, dateLineWithPlaceHolder) = handleFirstLine(
@@ -149,20 +140,15 @@ object Mht2Html {
             imgFileNameExtensionMap,
             imgOutputFolder
         )
-        System.err.println("/////////////////")
-        System.err.println(remainOfFirstLine)
-        System.err.println(htmlHeadTemplate)
-        System.err.println(globalStyleSheet)
-        System.err.println(startDateInUTC.toInstant().toString())
-        System.err.println(dateLineWithPlaceHolder)
+        // BufferedReader(FileReader(fileLocation))
 
         var dateForHtmlHead = startDateInUTC
         var currentDate = startDateInUTC
         var fileCounter = 0
 
         lineDeque.offer(remainOfFirstLine)
-        var tmpLine: String? = null
-        while (/*counter++ < 10 && */raf.readLineInUtf8().also { tmpLine = it } != null) {
+        var tmpLine: String?
+        while (raf.readLineInUtf8().also { tmpLine = it } != null) {
             val line = tmpLine!!
             val (refactoredLine, newDate) = extractLineAndReplaceStyle(
                 line,
@@ -173,8 +159,8 @@ object Mht2Html {
             )
             progress?.value = (raf.filePointer.toFloat()) / (offsetList[1].toFloat())
             if (raf.filePointer > offsetList[1]) break;
-            System.err.println(refactoredLine)
-            System.err.println(newDate?.toInstant()?.toString() ?: "")
+            // System.err.println(refactoredLine)
+            // System.err.println(newDate?.toInstant()?.toString() ?: "")
             if (newDate != null) { // Time to write file
                 if (lineDeque.size > lineLimit) {
                     writeFragmentFile(
@@ -186,7 +172,7 @@ object Mht2Html {
                         styleClassNameMap,
                         dateForHtmlHead,
                         lineDeque,
-                        endOfHtml
+                        END_OF_HTML
                     )
                     dateForHtmlHead = newDate!!
                 }
@@ -204,7 +190,7 @@ object Mht2Html {
             styleClassNameMap,
             dateForHtmlHead,
             lineDeque,
-            endOfHtml
+            END_OF_HTML
         )
     }
 
@@ -219,13 +205,13 @@ object Mht2Html {
         lineDeque: ConcurrentLinkedDeque<String>,
         endOfHtml: String
     ) {
-        val fragmentFileName = File(fileLocation).name + "_$fileCounter.html"
+        val fragmentFileName = File(fileLocation).nameWithoutExtension + "_${"%03d".format(fileCounter)}.html"
         val fragmentFile = File(fileOutputPath).resolve(fragmentFileName)
         if (fragmentFile.exists()) {
             System.err.println("$fragmentFileName exists! Overwriting")
         }
         fragmentFile.createNewFile()
-        val fw = FileWriter(fragmentFile)
+        val fw = FileWriter(fragmentFile, UTF_8)
         val bfw = BufferedWriter(fw)
         val fileHead = htmlHeadTemplate.replace(
             STYLE_PLACEHOLDER,
@@ -258,6 +244,12 @@ object Mht2Html {
         SimpleDateFormat("yyyy-MM-dd").apply { timeZone = TimeZone.getTimeZone("UTC") }
     private val YYYY_MM_DD_HH_MM_SS_Z_FORMATTER = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
 
+    const val CLOSING_TITLE_TAG = "</title>"
+    const val OPENNING_STYLE_TAG_FOR_FIRSTLINE = "<style type=\"text/css\">"
+    const val CLOSING_STYLE_TAG = "</style>"
+    const val BEFORE_DATE_TEXT = "&nbsp;</div></td></tr>"
+    const val AFTER_DATE_TEXT = "</td></tr>"
+    const val CRLF = "\r\n"
     private fun handleFirstLine(
         rawFirstLine: String,
         styleClassNameMap: MutableMap<String, String>,
@@ -272,23 +264,21 @@ object Mht2Html {
             imgOutputFolder,
             isConvertTimeToDate = false
         )
-        val closingTitleTag = "</title>"
-        val closingStyleTag = "</style>"
-        val beforeDate = "&nbsp;</div></td></tr>"
-        val closingDateTag = "</td></tr>"
         var sb = StringBuilder()
-        val startOfStyleTag = firstLine.indexOf(closingTitleTag) + closingTitleTag.length
-        val endOfStyleTagPlusOne = firstLine.indexOf(closingStyleTag, startOfStyleTag) + closingStyleTag.length
+        val startOfStyleTag = firstLine.indexOf(CLOSING_TITLE_TAG) + CLOSING_TITLE_TAG.length
+        val endOfStyleTagPlusOne = firstLine.indexOf(CLOSING_STYLE_TAG, startOfStyleTag) + CLOSING_STYLE_TAG.length
         val styleWithTag = firstLine.substring(startOfStyleTag, endOfStyleTagPlusOne)
         val globalStyleSheet =
-            styleWithTag.substring("<style type=\"text/css\">".length, styleWithTag.length - closingStyleTag.length)
-        val startOfDateCell = firstLine.indexOf(beforeDate) + beforeDate.length
-        val endOfDateCellPlusOne = firstLine.indexOf(closingDateTag, startOfDateCell) + closingDateTag.length
+            styleWithTag.substring(
+                OPENNING_STYLE_TAG_FOR_FIRSTLINE.length,
+                styleWithTag.length - CLOSING_STYLE_TAG.length
+            )
+        val startOfDateCell = firstLine.indexOf(BEFORE_DATE_TEXT) + BEFORE_DATE_TEXT.length
+        val endOfDateCellPlusOne = firstLine.indexOf(AFTER_DATE_TEXT, startOfDateCell) + AFTER_DATE_TEXT.length
         val dateCell = firstLine.substring(startOfDateCell, endOfDateCellPlusOne)
-        System.err.println("**** DATE CELL $dateCell")
         sb.append(firstLine.substring(0, startOfStyleTag))
-        sb.append("\r\n")
-        sb.append("<style type=\"text/css\">$STYLE_PLACEHOLDER</style>")
+        sb.append(CRLF)
+        sb.append("$OPENNING_STYLE_TAG_FOR_FIRSTLINE$STYLE_PLACEHOLDER$CLOSING_STYLE_TAG")
         sb.append(firstLine.substring(endOfStyleTagPlusOne, startOfDateCell))
 
 
@@ -301,7 +291,7 @@ object Mht2Html {
         }
 
         val dateLineWithPlaceHolder = dateCell.replace(startDateStr, DATE_PLACEHOLDER)
-        sb.append("\r\n")
+        sb.append(CRLF)
         sb.append(dateLineWithPlaceHolder)
         val htmlHeadTemplate = sb.toString()
 
@@ -331,6 +321,10 @@ object Mht2Html {
     const val IMG_TAG_OPENING = "<IMG src=\"{"
     const val IMG_TAG_CLOSING = "}.dat\">"
     const val IMG_FILENAME_LENGTH = "96F1308E-DDB6-44b1-98D1-16EE42C52F27".length
+    const val STYLE_PREFIX = "style="
+    const val STYLE_PREFIX_WITH_QUOTE = "style=\""
+    const val STYLE_SUFFIX = ">"
+    const val STYLE_SUFFIX_WITH_QUOTE = "\""
 
     private fun extractLineAndReplaceStyle(
         line: String,
@@ -342,10 +336,6 @@ object Mht2Html {
     ): PerLineExtractResult {
         var currentDate = date
         var newDate: Date? = null
-        val stylePrefix = "style="
-        val stylePrefixWithQuote = "style=\""
-        val suffix = ">"
-        val suffixWithQuote = "\""
         var prevIndex = 0
         var sb = StringBuilder()
         var tmpIndex: Int
@@ -353,21 +343,21 @@ object Mht2Html {
         val imgRelativeFolder = imgOutputFolder.name
 
         // Handling Style
-        while (line.indexOf(stylePrefix, prevIndex).also { tmpIndex = it } > 0) {
+        while (line.indexOf(STYLE_PREFIX, prevIndex).also { tmpIndex = it } > 0) {
             val startOfStyleAttribute = tmpIndex
-            isWithQuote = line[tmpIndex + stylePrefix.length] == '"'
+            isWithQuote = line[tmpIndex + STYLE_PREFIX.length] == '"'
             var endOfStyleAttribute: Int
             var styleSheet = if (isWithQuote) {
                 endOfStyleAttribute =
-                    line.indexOf(suffixWithQuote, startOfStyleAttribute + stylePrefixWithQuote.length)
-                line.substring(startOfStyleAttribute + stylePrefixWithQuote.length, endOfStyleAttribute)
+                    line.indexOf(STYLE_SUFFIX_WITH_QUOTE, startOfStyleAttribute + STYLE_PREFIX_WITH_QUOTE.length)
+                line.substring(startOfStyleAttribute + STYLE_PREFIX_WITH_QUOTE.length, endOfStyleAttribute)
             } else {
-                endOfStyleAttribute = line.indexOf(suffix, startOfStyleAttribute + stylePrefix.length)
-                line.substring(startOfStyleAttribute + stylePrefix.length, endOfStyleAttribute)
+                endOfStyleAttribute = line.indexOf(STYLE_SUFFIX, startOfStyleAttribute + STYLE_PREFIX.length)
+                line.substring(startOfStyleAttribute + STYLE_PREFIX.length, endOfStyleAttribute)
             }
             if (!styleClassNameMap.contains(styleSheet)) {
                 val className = "stl-" + (styleClassNameMap.size + 1)
-                styleClassNameMap.put(styleSheet, className)
+                styleClassNameMap[styleSheet] = className
             }
             sb.append(line.substring(prevIndex, startOfStyleAttribute))
             sb.append("class=\"${styleClassNameMap[styleSheet]!!}\"")
@@ -412,13 +402,16 @@ object Mht2Html {
         }
         sb.append(refactoredLine.substring(prevIdxForImgTag))
         refactoredLine = sb.toString()
+
+        // Point Bracket > (Greater-than mark)
         refactoredLine = refactoredLine.replace("&get;", "&gt;")
+
         return PerLineExtractResult(refactoredLine, newDate)
     }
 
+    private val H_MM_SS_DATE_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("H:mm:ss")
     private fun getConvertedDate(time: String, currentDate: Date): Date {
-        val H_MM_SS_DATETIMEFORMATTER = DateTimeFormatter.ofPattern("H:mm:ss")
-        val localTime = LocalTime.parse(time, H_MM_SS_DATETIMEFORMATTER)
+        val localTime = LocalTime.parse(time, H_MM_SS_DATE_TIME_FORMATTER)
 
         val calIns = Calendar.getInstance()
         calIns.time = currentDate

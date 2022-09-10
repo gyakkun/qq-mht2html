@@ -76,7 +76,7 @@ private fun App(windowScope: FrameWindowScope) {
                         }
                     }, content = { Text("Choose File") })
                 }
-                Spacer(modifier = Modifier.height(30.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Row {
                     TextField(
                         value = fileOutputLocation,
@@ -124,7 +124,7 @@ private fun App(windowScope: FrameWindowScope) {
                 Spacer(modifier = Modifier.size(10.dp))
                 Button(
                     modifier = Modifier.padding(vertical = 24.dp),
-                    enabled = progress.value < 0.001F || progress.value > 0.99F,
+                    enabled = progress.value < 0.0001F || progress.value > 0.9999F,
                     onClick = {
                         GlobalScope.launch {
                             var tc = Runtime.getRuntime().availableProcessors()
