@@ -220,6 +220,7 @@ object Mht2Html {
         bfw.write(fileHead)
         while (lineDeque.isNotEmpty()) {
             bfw.write(lineDeque.poll())
+            bfw.write(CRLF)
         }
         bfw.write(endOfHtml)
         bfw.flush()
