@@ -20,7 +20,7 @@
 
 ## 测试数据
 
-环境: R5 3500X/32G/SM961 SSD
+环境: R5 3500X@Fixed4.3GHz(6C6T)/32G/Kioxia CD6 SSD, Windows Defender 主动防护关
 
 输入: 50G, 内含100000+张图片, 约800000行聊天记录
 
@@ -28,11 +28,11 @@
 
 --------
 
-环境: i5 9400F/16G/980pro SSD
+环境: i5 9400F(6C6T)/16G/Samsung 980pro SSD, Windows Defender 主动防护开
 
 输入: 同上
 
-耗时: 总耗时~?s
+耗时: 总耗时 - 待测
 
 ## 参考
 
