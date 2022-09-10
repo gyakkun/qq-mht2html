@@ -26,6 +26,14 @@
 
 耗时: 总耗时~800s
 
+--------
+
+环境: i5 9400F/16G/980pro SSD
+
+输入: 同上
+
+耗时: 总耗时~1200s
+
 ## 参考
 
 * https://github.com/a645162/QQChatRecordMhtToHtmlTool (已经删除/私有。其中一个Fork: https://github.com/bushrose/QQChatRecordMhtToHtmlTool)
