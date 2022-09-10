@@ -188,12 +188,12 @@ object Mht2Html {
                         lineDeque,
                         endOfHtml
                     )
-
+                    dateForHtmlHead = newDate!!
                 }
                 currentDate = newDate!!
-                dateForHtmlHead = newDate!!
+            } else {
+                lineDeque.offer(refactoredLine)
             }
-            lineDeque.offer(refactoredLine)
         }
         writeFragmentFile(
             fileLocation,
@@ -412,6 +412,7 @@ object Mht2Html {
         }
         sb.append(refactoredLine.substring(prevIdxForImgTag))
         refactoredLine = sb.toString()
+        refactoredLine = refactoredLine.replace("&get;", "&gt;")
         return PerLineExtractResult(refactoredLine, newDate)
     }
 
