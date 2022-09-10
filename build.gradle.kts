@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "moe.nyamori"
-version = "1.0-SNAPSHOT"
+version = extra["app.version"]!!
 
 repositories {
     google()
@@ -41,8 +41,38 @@ compose.desktop {
         mainClass = "MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "qq-mht2html"
-            packageVersion = "1.0.0"
+            packageName = "QQ Mht2html"
+
+            packageVersion = project.version as String
+            description = "An application to convert QQ-generated MHT file to separated HTML and image files."
+            copyright = "© 2022 gyakkun. Some rights reserved."
+            vendor = "gyakkun"
+            appResourcesRootDir.set(project.layout.projectDirectory.dir("resources"))
+
+            // modules(
+            //     "java.logging",
+            //     "java.naming",
+            //     "jdk.crypto.ec"
+            // )
+
+            val iconsRoot = project.file("src/jvmMain/resources/drawables")
+
+            linux {
+                iconFile.set(iconsRoot.resolve("qq-mht2html.png"))
+            }
+
+            windows {
+                iconFile.set(iconsRoot.resolve("qq-mht2html.ico"))
+                // Wondering what the heck is this? See : https://wixtoolset.org/documentation/manual/v3/howtos/general/generate_guids.html
+                upgradeUuid = "92D39676-2715-4362-82D2-BE4A1923D4AC"
+                menuGroup = packageName
+                // perUserInstall = true
+            }
+
+            macOS {
+                iconFile.set(iconsRoot.resolve("qq-mht2html.icns"))
+            }
+
         }
     }
 }

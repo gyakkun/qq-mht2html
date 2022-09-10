@@ -7,6 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.Window
@@ -19,7 +20,11 @@ import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
 
 fun main() = application {
-    Window(onCloseRequest = ::exitApplication, title = "QQ MHT2HTML") {
+    Window(
+        onCloseRequest = ::exitApplication,
+        title = "QQ MHT2HTML",
+        icon = painterResource("/drawables/qq-mht2html.png"),
+    ) {
         val windowScope = this
         // App()
         MaterialTheme {
@@ -34,8 +39,8 @@ fun main() = application {
 private fun App(windowScope: FrameWindowScope) {
     var showDialog by remember { mutableStateOf(false) }
     var threadCountStr by remember { mutableStateOf(Runtime.getRuntime().availableProcessors().toString()) }
-    var mhtFileLocation by remember { mutableStateOf("E:\\[ToBak]\\Desktop_Win10\\咕咕瓜的避难窝.mht") }
-    var fileOutputLocation by remember { mutableStateOf("U:\\") }
+    var mhtFileLocation by remember { mutableStateOf("C:\\Windows\\notepad.exe") }
+    var fileOutputLocation by remember { mutableStateOf("C:\\") }
     var imgFileOutputFolder by remember { mutableStateOf("img") }
     var errMsg = remember { mutableStateOf("Error message.") }
     var showAlert = remember { mutableStateOf(false) }
