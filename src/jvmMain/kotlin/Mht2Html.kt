@@ -14,6 +14,7 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.CountDownLatch
+import kotlin.collections.HashMap
 import kotlin.text.Charsets.UTF_8
 
 @ExperimentalMaterialApi
@@ -42,64 +43,66 @@ object Mht2Html {
         System.err.println("Thread count: $threadCount")
 
         showInfoBar(showAlert, errMsg, "Processing Images...", 5_000)
-
+        FILENAME_COUNTER.clear()
         val tp = newFixedThreadPoolContext(threadCount + 1, "mht2html") // 1 more thread for producer
         var timing: Long = System.currentTimeMillis()
         val raf = RandomAccessFile(fileLocation, "r")
-        var fileOffset: Long
-        val imgOutputFolder = File(imgOutputPath)
-        if (imgOutputFolder.exists() && !imgOutputFolder.isDirectory) {
-            val tmpErrMsg = "Img output dir exists and is not a folder!"
-            showAlert?.value = true
-            errMsg?.value = tmpErrMsg
-            System.err.println(tmpErrMsg)
-            return@launch
-        } else if (!imgOutputFolder.exists()) {
-            imgOutputFolder.mkdirs()
-        }
-        var line: String
-        while (raf.readLineInUtf8().also { line = it } != null) {
-            if (line.contains("boundary=\"")) {
-                BOUNDARY = "--" + line.substring(line.indexOf("=") + 2, line.length - 1)
-                fileOffset = raf.filePointer
-                System.err.println("First boundary offset: $fileOffset")
-                break
-            }
-            if (raf.filePointer > 1000) {
-                showInfoBar(
-                    showAlert,
-                    errMsg,
-                    "Boundary not found in the first 1000 Bytes. MHT file may be not valid.",
-                    3_000
-                )
+        raf.use {
+            var fileOffset: Long
+            val imgOutputFolder = File(imgOutputPath)
+            if (imgOutputFolder.exists() && !imgOutputFolder.isDirectory) {
+                val tmpErrMsg = "Img output dir exists and is not a folder!"
+                showAlert?.value = true
+                errMsg?.value = tmpErrMsg
+                System.err.println(tmpErrMsg)
                 return@launch
+            } else if (!imgOutputFolder.exists()) {
+                imgOutputFolder.mkdirs()
             }
-        }
-        val latchList = ArrayList<CountDownLatch>(threadCount)
-        repeat(threadCount) {
-            latchList.add(CountDownLatch(1))
-        }
-
-        System.err.println("Boundary: $BOUNDARY")
-        val sunday = Sunday(raf, 0L, BOUNDARY.toByteArray())
-        val offsetList = ArrayList<Long>()
-        GlobalScope.launch(tp) {
-            val producer = produceOffSet(fileLocation, sunday, offsetList) // The 1 more thread
+            var line: String
+            while (raf.readLineInUtf8().also { line = it } != null) {
+                if (line.contains("boundary=\"")) {
+                    BOUNDARY = "--" + line.substring(line.indexOf("=") + 2, line.length - 1)
+                    fileOffset = raf.filePointer
+                    System.err.println("First boundary offset: $fileOffset")
+                    break
+                }
+                if (raf.filePointer > 1000) {
+                    showInfoBar(
+                        showAlert,
+                        errMsg,
+                        "Boundary not found in the first 1000 Bytes. MHT file may be not valid.",
+                        3_000
+                    )
+                    return@launch
+                }
+            }
+            val latchList = ArrayList<CountDownLatch>(threadCount)
             repeat(threadCount) {
-                launchConsumer(it, fileLocation, imgOutputFolder, latchList[it], producer)
+                latchList.add(CountDownLatch(1))
             }
-        }
+
+            System.err.println("Boundary: $BOUNDARY")
+            val sunday = Sunday(raf, 0L, BOUNDARY.toByteArray())
+            val offsetList = ArrayList<Long>()
+            GlobalScope.launch(tp) {
+                val producer = produceOffSet(fileLocation, sunday, offsetList) // The 1 more thread
+                repeat(threadCount) {
+                    launchConsumer(it, fileLocation, imgOutputFolder, latchList[it], producer)
+                }
+            }
 //
-        for (latch in latchList) latch.await()
-        showInfoBar(showAlert, errMsg, "Processing HTML...", 5_000L)
-        processHtml(
-            fileLocation,
-            offsetList,
-            fileOutputPath,
-            imgOutputPath
-        )
-        val timingMsg = "TOTAL: Timing: ${System.currentTimeMillis() - timing} ms"
-        showInfoBar(showAlert, errMsg, timingMsg, 60_000L)
+            for (latch in latchList) latch.await()
+            showInfoBar(showAlert, errMsg, "Processing HTML...", 5_000L)
+            processHtml(
+                fileLocation,
+                offsetList,
+                fileOutputPath,
+                imgOutputPath
+            )
+            val timingMsg = "TOTAL: Timing: ${System.currentTimeMillis() - timing} ms"
+            showInfoBar(showAlert, errMsg, timingMsg, 60_000L)
+        }
     }
 
     val DATE_REGEX = Regex(".*日期: (\\d{4}-\\d{2}-\\d{2}).*")
@@ -109,9 +112,11 @@ object Mht2Html {
     }
 
     const val END_OF_HTML = "</table></body></html>"
+    val MSG_OBJECT_REGEX = Regex(".*消息对象:(.*?)</div>")
+    val MSG_OBJECT_PLACEHOLDER = "#MSG_OBJECT_PLACEHOLDER"
     private fun processHtml(
         fileLocation: String,
-        offsetList: java.util.ArrayList<Long>,
+        offsetList: ArrayList<Long>,
         fileOutputPath: String,
         imgOutputPath: String,
         lineLimit: Int = 7500
@@ -122,6 +127,7 @@ object Mht2Html {
         val imgOutputFolder = File(imgOutputPath)
         val imgFileNameExtensionMap: Map<String, String> = getImgFileNameExtensionMap(imgOutputFolder)
         val firstBoundaryOffset = offsetList[0]
+        val startOfImageBoundaryOffset = offsetList[1] // Start of the Image part
         raf.seek(firstBoundaryOffset)
         var line: String
         var firstLineOffset = -1L
@@ -131,68 +137,143 @@ object Mht2Html {
                 break
             }
         }
-
-        raf.seek(firstLineOffset)
-        val firstLine = raf.readLineInUtf8()
-        val (remainOfFirstLine, htmlHeadTemplate, globalStyleSheet, startDateInUTC, dateLineWithPlaceHolder) = handleFirstLine(
-            firstLine,
-            styleClassNameMap,
-            imgFileNameExtensionMap,
-            imgOutputFolder
-        )
-        // BufferedReader(FileReader(fileLocation))
-
-        var dateForHtmlHead = startDateInUTC
-        var currentDate = startDateInUTC
-        var fileCounter = 0
-
-        lineDeque.offer(remainOfFirstLine)
-        var tmpLine: String?
-        while (raf.readLineInUtf8().also { tmpLine = it } != null) {
-            val line = tmpLine!!
-            val (refactoredLine, newDate) = extractLineAndReplaceStyle(
-                line,
+        var afterFirstLineOffset = -1L
+        raf.use {
+            raf.seek(firstLineOffset)
+            val firstLine = raf.readLineInUtf8()
+            var (remainOfFirstLine, htmlHeadTemplate, globalStyleSheet, startDateInUTC, dateLineWithPlaceHolder) = handleFirstLine(
+                firstLine,
                 styleClassNameMap,
-                currentDate,
                 imgFileNameExtensionMap,
                 imgOutputFolder
             )
-            progress?.value = (raf.filePointer.toFloat()) / (offsetList[1].toFloat())
-            if (raf.filePointer > offsetList[1]) break;
-            // System.err.println(refactoredLine)
-            // System.err.println(newDate?.toInstant()?.toString() ?: "")
-            if (newDate != null) { // Time to write file
-                if (lineDeque.size > lineLimit) {
+            afterFirstLineOffset = raf.filePointer
+
+            // Count Lines
+
+            // 1) How many lines from the head of file to start point of the HTML part
+            val lineNoEndOfHtml = countLineOfFileUntilTarget(fileLocation, END_OF_HTML)
+
+            // 2) How many lines from the head of file to start point of the HTML part
+            val lineNoStartOfHtml = countLineOfFileUntilTarget(fileLocation, "<html")
+
+            // 3) Get how many lines of the html part
+
+            val totalLineOfHtml = lineNoEndOfHtml - lineNoStartOfHtml + 1
+            var msgObject = MSG_OBJECT_REGEX.find(firstLine)!!.groupValues[1]
+
+            FileReader(fileLocation, UTF_8).use { fr ->
+                BufferedReader(fr).use { bfr ->
+                    repeat(lineNoStartOfHtml) {
+                        bfr.readLine()
+                    }
+
+                    var dateForHtmlHead = startDateInUTC
+                    var currentDate = startDateInUTC
+                    var fileCounter = 0
+                    var lineCounter = 0
+
+                    lineDeque.offer(remainOfFirstLine)
+                    var tmpLine: String?
+                    while (bfr.readLine().also { tmpLine = it } != null) {
+                        lineCounter++
+                        progress?.value = lineCounter.toFloat() / totalLineOfHtml.toFloat()
+                        if (lineCounter >= totalLineOfHtml) { // The last line is END_OF_HTML line
+                            break
+                        }
+
+                        val line = tmpLine!!
+                        val (refactoredLine, newDate) = extractLineAndReplaceStyle(
+                            line,
+                            styleClassNameMap,
+                            currentDate,
+                            imgFileNameExtensionMap,
+                            imgOutputFolder
+                        )
+                        //  System.err.println(refactoredLine)
+                        // System.err.println(newDate?.toInstant()?.toString() ?: "")
+                        if (refactoredLine.contains("消息对象")) {
+                            val newMsgObject = MSG_OBJECT_REGEX.find(refactoredLine)!!.groupValues[1]
+                            if (newMsgObject != msgObject) { // Bypass the first html line of mht file
+                                writeFragmentFile(
+                                    fileLocation,
+                                    ++fileCounter,
+                                    fileOutputPath,
+                                    htmlHeadTemplate.replace(MSG_OBJECT_PLACEHOLDER, msgObject),
+                                    globalStyleSheet,
+                                    styleClassNameMap,
+                                    dateForHtmlHead,
+                                    lineDeque,
+                                    END_OF_HTML,
+                                    msgObject
+                                )
+                                msgObject = newMsgObject
+                                assert(newDate != null)
+                                if (newDate != null) {
+                                    dateForHtmlHead = newDate
+                                }
+                                lineDeque.offer(refactoredLine.substring(refactoredLine.indexOf("<tr><td><div class=\"stl-3\"><div class=\"stl-4\">")))
+                            }
+                        } else if (newDate != null) { // Time to write file
+                            if (lineDeque.size > lineLimit) {
+                                writeFragmentFile(
+                                    fileLocation,
+                                    ++fileCounter,
+                                    fileOutputPath,
+                                    htmlHeadTemplate.replace(MSG_OBJECT_PLACEHOLDER, msgObject),
+                                    globalStyleSheet,
+                                    styleClassNameMap,
+                                    dateForHtmlHead,
+                                    lineDeque,
+                                    END_OF_HTML,
+                                    msgObject
+                                )
+                                dateForHtmlHead = newDate!!
+                            }
+                            currentDate = newDate!!
+                            lineDeque.offer(refactoredLine)
+                        } else {
+                            lineDeque.offer(refactoredLine)
+                        }
+                    }
                     writeFragmentFile(
                         fileLocation,
                         ++fileCounter,
                         fileOutputPath,
-                        htmlHeadTemplate,
+                        htmlHeadTemplate.replace(MSG_OBJECT_PLACEHOLDER, msgObject),
                         globalStyleSheet,
                         styleClassNameMap,
                         dateForHtmlHead,
                         lineDeque,
-                        END_OF_HTML
+                        END_OF_HTML,
+                        msgObject
                     )
-                    dateForHtmlHead = newDate!!
                 }
-                currentDate = newDate!!
-            } else {
-                lineDeque.offer(refactoredLine)
             }
         }
-        writeFragmentFile(
-            fileLocation,
-            ++fileCounter,
-            fileOutputPath,
-            htmlHeadTemplate,
-            globalStyleSheet,
-            styleClassNameMap,
-            dateForHtmlHead,
-            lineDeque,
-            END_OF_HTML
-        )
     }
+
+    private val ILLEGAL_CHAR_IN_FILENAME_REGEX = Regex("[#%&{}<>*$@`'+=:/\\\\?|\"]")
+    private fun sanitizeFilename(filename: String): String {
+        return filename.replace(ILLEGAL_CHAR_IN_FILENAME_REGEX, "-")
+    }
+
+    private fun countLineOfFileUntilTarget(fileLocation: String, targetOffset: String): Int {
+        var tmpLine: String
+        var lineCount = 0
+
+        FileReader(fileLocation).use { fr ->
+            BufferedReader(fr).use { bfr ->
+                while (bfr.readLine().also { tmpLine = it } != null) {
+                    lineCount++
+                    if (tmpLine.startsWith(targetOffset)) break
+                }
+            }
+        }
+        return lineCount
+    }
+
+    private val FILENAME_COUNTER = HashMap<String, Int>()
 
     private fun writeFragmentFile(
         fileLocation: String,
@@ -203,28 +284,39 @@ object Mht2Html {
         styleClassNameMap: ConcurrentHashMap<String, String>,
         dateForHtmlHead: Date,
         lineDeque: ConcurrentLinkedDeque<String>,
-        endOfHtml: String
+        endOfHtml: String,
+        msgObject: String
     ) {
-        val fragmentFileName = File(fileLocation).nameWithoutExtension + "_${"%03d".format(fileCounter)}.html"
+        val sanitizedFilenamePrefix = sanitizeFilename(msgObject)
+        FILENAME_COUNTER.putIfAbsent(sanitizedFilenamePrefix, 0)
+        FILENAME_COUNTER[sanitizedFilenamePrefix] = FILENAME_COUNTER[sanitizedFilenamePrefix]!! + 1
+        val fileCount = FILENAME_COUNTER[sanitizedFilenamePrefix]
+        val fragmentFileName =
+            sanitizedFilenamePrefix + "_${"%03d".format(FILENAME_COUNTER[sanitizedFilenamePrefix]!!)}.html"
         val fragmentFile = File(fileOutputPath).resolve(fragmentFileName)
         if (fragmentFile.exists()) {
             System.err.println("$fragmentFileName exists! Overwriting")
         }
         fragmentFile.createNewFile()
-        val fw = FileWriter(fragmentFile, UTF_8)
-        val bfw = BufferedWriter(fw)
-        val fileHead = htmlHeadTemplate.replace(
-            STYLE_PLACEHOLDER,
-            globalStyleSheet + styleClassNameMap.map { ".${it.value}{$it.key}" }.joinToString(separator = "") { it })
-            .replace(DATE_PLACEHOLDER, YYYY_MM_DD_DATE_FORMATTER_UTC.format(dateForHtmlHead))
-        bfw.write(fileHead)
-        while (lineDeque.isNotEmpty()) {
-            bfw.write(lineDeque.poll())
-            bfw.write(CRLF)
+        FileWriter(fragmentFile, UTF_8).use { fw ->
+            BufferedWriter(fw).use { bfw ->
+                var fileHead = htmlHeadTemplate.replace(
+                    STYLE_PLACEHOLDER,
+                    globalStyleSheet + styleClassNameMap.map { "." + it.value + "{" + it.key + "}" }
+                        .joinToString(separator = "\r\n") { it })
+                    .replace(DATE_PLACEHOLDER, YYYY_MM_DD_DATE_FORMATTER_UTC.format(dateForHtmlHead))
+                if (fileCount != 1) {
+                    fileHead = fileHead.replaceFirst(">日期", "hidden>日期")
+                }
+                bfw.write(fileHead)
+                bfw.write(CRLF)
+                while (lineDeque.isNotEmpty()) {
+                    bfw.write(lineDeque.poll())
+                    bfw.write(CRLF)
+                }
+                bfw.write(endOfHtml)
+            }
         }
-        bfw.write(endOfHtml)
-        bfw.flush()
-        bfw.close()
     }
 
     private fun getImgFileNameExtensionMap(imgOutputFolder: File): Map<String, String> {
@@ -294,7 +386,9 @@ object Mht2Html {
         val dateLineWithPlaceHolder = dateCell.replace(startDateStr, DATE_PLACEHOLDER)
         sb.append(CRLF)
         sb.append(dateLineWithPlaceHolder)
-        val htmlHeadTemplate = sb.toString()
+        var htmlHeadTemplate = sb.toString()
+        val msgObj = MSG_OBJECT_REGEX.find(htmlHeadTemplate)!!.groupValues[1]
+        htmlHeadTemplate = htmlHeadTemplate.replace(msgObj, MSG_OBJECT_PLACEHOLDER)
 
         return ExtractFirstLineResult(
             firstLine.substring(endOfDateCellPlusOne),
