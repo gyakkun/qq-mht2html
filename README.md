@@ -20,7 +20,7 @@
 
 ## 测试数据
 
-环境: R5 3500X@<!-- -->Fixed4.3GHz(6C6T)/32G/Kioxia CD6 SSD, Windows Defender 主动防护关
+环境: Desktop R5-3500X@<!-- -->Fixed4.3GHz(6C6T)/32G@<!-- -->3200MHz/Kioxia CD6 SSD, Win10 21H2, Windows Defender 主动防护关
 
 输入: 50G, 内含100000+张图片, 约800000行聊天记录
 
@@ -28,7 +28,7 @@
 
 --------
 
-环境: i5 9400F(6C6T)/16G/Samsung 980pro SSD, Windows Defender 主动防护关
+环境: Desktop i5-9400F(6C6T)/16G@<!-- -->2666MHz/Samsung 980pro SSD, Win11, Windows Defender 主动防护关
 
 输入: 同上
 
@@ -36,7 +36,7 @@
 
 -----------
 
-环境: R7 4800H@<!-- -->54W(Max)(8C16T)/32G/Phison E13 SSD, Windows Defender 主动防护关
+环境: Laptop Tongfang CODE-01 R7-4800H@<!-- -->54W(Max)(8C16T)/32G@<!-- -->2400MHz/Phison E13 SSD, Win10 21H2, Windows Defender 主动防护关
 
 输入: 同上
 
@@ -44,11 +44,11 @@
 
 ----------
 
-环境: i7 9850H(6C12T)/24G/WD SN520 SSD, Windows Defender 主动防护关
+环境: Laptop Dell Latitude 5401 i7-9850H(6C12T)/24G@<!-- -->2400MHz/WD SN520 SSD, Win10 21H2, Windows Defender 主动防护关
 
 输入: 同上
 
-耗时: 总耗时 - 待测
+耗时: 总耗时~230s
 
 ## 参考
 
