@@ -28,11 +28,11 @@
 
 --------
 
-环境: i5 9400F(6C6T)/16G/Samsung 980pro SSD, Windows Defender 主动防护开
+环境: i5 9400F(6C6T)/16G/Samsung 980pro SSD, Windows Defender 主动防护关
 
 输入: 同上
 
-耗时: 总耗时 - 待测
+耗时: 总耗时~230s
 
 ## 参考
 
