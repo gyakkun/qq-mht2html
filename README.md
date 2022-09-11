@@ -24,7 +24,15 @@
 
 输入: 50G, 内含100000+张图片, 约800000行聊天记录
 
-耗时: 总耗时~170s
+耗时: 总耗时~150s
+
+--------
+
+环境: 同上, Windows Defender 主动防护**开**
+
+输入: 同上
+
+耗时: 总耗时~210s
 
 --------
 
@@ -34,9 +42,9 @@
 
 耗时: 总耗时~230s
 
------------t
+-----------
 
-环境: Laptop Tongfang CODE-01 R7-4800H@<!-- -->54W(Max)(8C16T)/32G@<!-- -->2400MHz/Phison E13 SSD, Win10 21H2, Windows Defender 主动防护关
+环境: Laptop Tongfang CODE-01 R7-4800H@<!-- -->54W(Max)(8C16T)/32G@<!-- -->2400MHz/Phison E13T SSD, Win10 21H2, Windows Defender 主动防护关
 
 输入: 同上
 
