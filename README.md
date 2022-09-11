@@ -20,7 +20,7 @@
 
 ## 测试数据
 
-环境: R5 3500X@Fixed4.3GHz(6C6T)/32G/Kioxia CD6 SSD, Windows Defender 主动防护关
+环境: R5 3500X@<!-- -->Fixed4.3GHz(6C6T)/32G/Kioxia CD6 SSD, Windows Defender 主动防护关
 
 输入: 50G, 内含100000+张图片, 约800000行聊天记录
 
@@ -33,6 +33,22 @@
 输入: 同上
 
 耗时: 总耗时~230s
+
+-----------
+
+环境: R7 4800H@<!-- -->54W(Max)(8C16T)/32G/Phison E13 SSD, Windows Defender 主动防护关
+
+输入: 同上
+
+耗时: 总耗时~280s
+
+----------
+
+环境: i7 9850H(6C12T)/24G/WD SN520 SSD, Windows Defender 主动防护关
+
+输入: 同上
+
+耗时: 总耗时 - 待测
 
 ## 参考
 
