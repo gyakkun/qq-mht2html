@@ -60,7 +60,7 @@
 
 ----------
 
-环境: Desktop Dell Optiplex 3060MFF Celeron-G3930t@<!-- -->Fixed2.7G(2C2T)/16G@<!-- -->2133MHz/Samsung SM961 SSD, Win10 1809, Windows Defender 主动防护关
+环境: Desktop Dell Optiplex 3060MFF Celeron-G3930T@<!-- -->Fixed2.7G(2C2T)/16G@<!-- -->2133MHz/Samsung SM961 SSD, Win10 1809, Windows Defender 主动防护关
 
 输入: 同上
 
