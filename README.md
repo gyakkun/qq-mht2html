@@ -58,6 +58,14 @@
 
 耗时: 总耗时~230s
 
+----------
+
+环境: Desktop Dell Optiplex 3060MFF Celeron-G3930t@<!-- -->Fixed2.7G(2C2T)/16G@<!-- -->2133MHz/Samsung SM961 SSD, Win10 1809, Windows Defender 主动防护关
+
+输入: 同上
+
+耗时: 总耗时~230s
+
 ## 参考
 
 * https://github.com/a645162/QQChatRecordMhtToHtmlTool (已经删除/私有。其中一个Fork: https://github.com/bushrose/QQChatRecordMhtToHtmlTool)
