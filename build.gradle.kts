@@ -44,8 +44,8 @@ compose.desktop {
             packageName = "QQ Mht2html"
 
             packageVersion = project.version as String
-            description = "An application to convert QQ-generated MHT file to separated HTML and image files."
-            copyright = "© 2022 gyakkun. Some rights reserved."
+            description = "QQ Mht2html"
+            copyright = "(C) 2022 gyakkun. Some rights reserved."
             vendor = "gyakkun"
             appResourcesRootDir.set(project.layout.projectDirectory.dir("resources"))
 
