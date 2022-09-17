@@ -12,9 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
@@ -37,14 +35,13 @@ fun main() = application {
 @OptIn(ExperimentalMaterialApi::class, ExperimentalCoroutinesApi::class)
 @Composable
 private fun App(windowScope: FrameWindowScope) {
-    var showDialog by remember { mutableStateOf(false) }
     var threadCountStr by remember { mutableStateOf(Runtime.getRuntime().availableProcessors().toString()) }
     var mhtFileLocation by remember { mutableStateOf("C:\\Windows\\notepad.exe") }
     var fileOutputLocation by remember { mutableStateOf("C:\\") }
     var imgFileOutputFolder by remember { mutableStateOf("img") }
-    var errMsg = remember { mutableStateOf("Error message.") }
-    var showAlert = remember { mutableStateOf(false) }
-    var progress = remember { mutableStateOf(0.0F) }
+    val errMsg = remember { mutableStateOf("Error message.") }
+    val showAlert = remember { mutableStateOf(false) }
+    val progress = remember { mutableStateOf(0.0F) }
 
 
     Surface {
@@ -132,15 +129,42 @@ private fun App(windowScope: FrameWindowScope) {
                     enabled = progress.value < 0.0001F || progress.value > 0.9999F,
                     onClick = {
                         GlobalScope.launch {
+
+                            val mhtFile = File(mhtFileLocation)
+                            if (!mhtFile.exists() || mhtFile.isDirectory) {
+                                val tmpErrMsg = "Not a valid mht file location!"
+                                showInfoBar(showAlert, errMsg, tmpErrMsg, -1L)
+                                return@launch
+                            }
+
+                            val fileOutputDirFile = File(fileOutputLocation)
+
+                            if (fileOutputDirFile.exists() && !fileOutputDirFile.isDirectory) {
+                                val tmpErrMsg = "Output dir exists and is not a folder!"
+                                showInfoBar(showAlert, errMsg, tmpErrMsg, -1L)
+                                return@launch
+                            }
+
+                            val imgOutputFolder = fileOutputDirFile.resolve(imgFileOutputFolder)
+                            if (imgOutputFolder.exists() && !imgOutputFolder.isDirectory) {
+                                val tmpErrMsg = "Img output dir exists and is not a folder!"
+                                showInfoBar(showAlert, errMsg, tmpErrMsg, -1L)
+                                return@launch
+                            }
+
                             var tc = Runtime.getRuntime().availableProcessors()
-                            runCatching { Integer.parseInt(threadCountStr) }.onFailure {
+                            runCatching {
+                                tc = Integer.parseInt(threadCountStr)
+                                if (tc <= 0) tc = 1
+                            }.onFailure {
                                 System.err.println("Thread count invalid. Using core number.")
                             }
                             Mht2Html.doJob(
                                 mhtFileLocation,
                                 fileOutputLocation,
-                                File(fileOutputLocation).resolve(imgFileOutputFolder).absolutePath,
+                                imgOutputFolder.absolutePath,
                                 tc,
+                                7500,
                                 showAlert,
                                 errMsg,
                                 progress
@@ -167,3 +191,19 @@ private fun App(windowScope: FrameWindowScope) {
 
 }
 
+suspend fun showInfoBar(
+    showAlert: MutableState<Boolean>?,
+    errMsg: MutableState<String>?,
+    msg: String,
+    delayMs: Long = 1_000L
+) = coroutineScope {
+    launch {
+        showAlert?.value = true
+        errMsg?.value = msg
+        System.err.println(msg)
+        if (delayMs < 0) return@launch
+        delay(delayMs)
+        showAlert?.value = false
+        errMsg?.value = ""
+    }
+}
