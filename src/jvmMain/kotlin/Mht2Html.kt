@@ -23,7 +23,7 @@ import kotlin.text.Charsets.UTF_8
 object Mht2Html {
     private lateinit var BOUNDARY: String
     private const val DEFAULT_THREAD_COUNT = 3
-    private const val DEFAULT_LINE_LIMIT = 7500
+    const val DEFAULT_LINE_LIMIT = 7500
     var showAlert: MutableState<Boolean>? = null
     var errMsg: MutableState<String>? = null
     var progress: MutableState<Float>? = null

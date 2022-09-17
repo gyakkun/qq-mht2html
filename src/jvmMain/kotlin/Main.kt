@@ -36,6 +36,7 @@ fun main() = application {
 @Composable
 private fun App(windowScope: FrameWindowScope) {
     var threadCountStr by remember { mutableStateOf(Runtime.getRuntime().availableProcessors().toString()) }
+    var lineLimitStr by remember { mutableStateOf("${Mht2Html.DEFAULT_LINE_LIMIT}") }
     var mhtFileLocation by remember { mutableStateOf("C:\\Windows\\notepad.exe") }
     var fileOutputLocation by remember { mutableStateOf("C:\\") }
     var imgFileOutputFolder by remember { mutableStateOf("img") }
@@ -124,6 +125,21 @@ private fun App(windowScope: FrameWindowScope) {
                     )
                 }
                 Spacer(modifier = Modifier.size(10.dp))
+                Row(modifier = Modifier.align(Alignment.Start)) {
+                    TextField(
+                        value = lineLimitStr,
+                        onValueChange = {
+                            lineLimitStr = it
+                        },
+                        label = { Text("Paging Line Limit") },
+                        modifier = Modifier.height(60.dp)
+                            .weight(0.5F, false),
+                        placeholder = {
+                            Text("${Mht2Html.DEFAULT_LINE_LIMIT}")
+                        }
+                    )
+                }
+                Spacer(modifier = Modifier.size(10.dp))
                 Button(
                     modifier = Modifier.padding(vertical = 24.dp),
                     enabled = progress.value < 0.0001F || progress.value > 0.9999F,
@@ -152,19 +168,29 @@ private fun App(windowScope: FrameWindowScope) {
                                 return@launch
                             }
 
-                            var tc = Runtime.getRuntime().availableProcessors()
+                            var threadCount = Runtime.getRuntime().availableProcessors()
                             runCatching {
-                                tc = Integer.parseInt(threadCountStr)
-                                if (tc <= 0) tc = 1
+                                threadCount = Integer.parseInt(threadCountStr)
+                                if (threadCount <= 0) threadCount = 1
                             }.onFailure {
                                 System.err.println("Thread count invalid. Using core number.")
                             }
+
+                            var lineLimit = Mht2Html.DEFAULT_LINE_LIMIT
+                            kotlin.runCatching {
+                                lineLimit = Integer.parseInt(lineLimitStr)
+                                if (lineLimit <= 500) lineLimit = 500
+                            }.onFailure {
+                                System.err.println("Thread count invalid. Using default 7500.")
+                            }
+
+
                             Mht2Html.doJob(
                                 mhtFileLocation,
                                 fileOutputLocation,
                                 imgOutputFolder.absolutePath,
-                                tc,
-                                7500,
+                                threadCount,
+                                lineLimit,
                                 showAlert,
                                 errMsg,
                                 progress
