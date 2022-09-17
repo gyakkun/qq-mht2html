@@ -140,64 +140,65 @@ private fun App(windowScope: FrameWindowScope) {
                     )
                 }
                 Spacer(modifier = Modifier.size(10.dp))
-                Button(
-                    modifier = Modifier.padding(vertical = 24.dp),
-                    enabled = progress.value < 0.0001F || progress.value > 0.9999F,
-                    onClick = {
-                        GlobalScope.launch {
+                Row(modifier = Modifier.align(Alignment.Start)) {
+                    Button(
+                        enabled = progress.value < 0.0001F || progress.value > 0.9999F,
+                        onClick = {
+                            GlobalScope.launch {
 
-                            val mhtFile = File(mhtFileLocation)
-                            if (!mhtFile.exists() || mhtFile.isDirectory) {
-                                val tmpErrMsg = "Not a valid mht file location!"
-                                showInfoBar(showAlert, errMsg, tmpErrMsg, -1L)
-                                return@launch
+                                val mhtFile = File(mhtFileLocation)
+                                if (!mhtFile.exists() || mhtFile.isDirectory) {
+                                    val tmpErrMsg = "Not a valid mht file location!"
+                                    showInfoBar(showAlert, errMsg, tmpErrMsg, -1L)
+                                    return@launch
+                                }
+
+                                val fileOutputDirFile = File(fileOutputLocation)
+
+                                if (fileOutputDirFile.exists() && !fileOutputDirFile.isDirectory) {
+                                    val tmpErrMsg = "Output dir exists and is not a folder!"
+                                    showInfoBar(showAlert, errMsg, tmpErrMsg, -1L)
+                                    return@launch
+                                }
+
+                                val imgOutputFolder = fileOutputDirFile.resolve(imgFileOutputFolder)
+                                if (imgOutputFolder.exists() && !imgOutputFolder.isDirectory) {
+                                    val tmpErrMsg = "Img output dir exists and is not a folder!"
+                                    showInfoBar(showAlert, errMsg, tmpErrMsg, -1L)
+                                    return@launch
+                                }
+
+                                var threadCount = Runtime.getRuntime().availableProcessors()
+                                runCatching {
+                                    threadCount = Integer.parseInt(threadCountStr)
+                                    if (threadCount <= 0) threadCount = 1
+                                }.onFailure {
+                                    System.err.println("Thread count invalid. Using core number.")
+                                }
+
+                                var lineLimit = Mht2Html.DEFAULT_LINE_LIMIT
+                                kotlin.runCatching {
+                                    lineLimit = Integer.parseInt(lineLimitStr)
+                                    if (lineLimit <= 500) lineLimit = 500
+                                }.onFailure {
+                                    System.err.println("Thread count invalid. Using default 7500.")
+                                }
+
+
+                                Mht2Html.doJob(
+                                    mhtFileLocation,
+                                    fileOutputLocation,
+                                    imgOutputFolder.absolutePath,
+                                    threadCount,
+                                    lineLimit,
+                                    showAlert,
+                                    errMsg,
+                                    progress
+                                )
                             }
-
-                            val fileOutputDirFile = File(fileOutputLocation)
-
-                            if (fileOutputDirFile.exists() && !fileOutputDirFile.isDirectory) {
-                                val tmpErrMsg = "Output dir exists and is not a folder!"
-                                showInfoBar(showAlert, errMsg, tmpErrMsg, -1L)
-                                return@launch
-                            }
-
-                            val imgOutputFolder = fileOutputDirFile.resolve(imgFileOutputFolder)
-                            if (imgOutputFolder.exists() && !imgOutputFolder.isDirectory) {
-                                val tmpErrMsg = "Img output dir exists and is not a folder!"
-                                showInfoBar(showAlert, errMsg, tmpErrMsg, -1L)
-                                return@launch
-                            }
-
-                            var threadCount = Runtime.getRuntime().availableProcessors()
-                            runCatching {
-                                threadCount = Integer.parseInt(threadCountStr)
-                                if (threadCount <= 0) threadCount = 1
-                            }.onFailure {
-                                System.err.println("Thread count invalid. Using core number.")
-                            }
-
-                            var lineLimit = Mht2Html.DEFAULT_LINE_LIMIT
-                            kotlin.runCatching {
-                                lineLimit = Integer.parseInt(lineLimitStr)
-                                if (lineLimit <= 500) lineLimit = 500
-                            }.onFailure {
-                                System.err.println("Thread count invalid. Using default 7500.")
-                            }
-
-
-                            Mht2Html.doJob(
-                                mhtFileLocation,
-                                fileOutputLocation,
-                                imgOutputFolder.absolutePath,
-                                threadCount,
-                                lineLimit,
-                                showAlert,
-                                errMsg,
-                                progress
-                            )
-                        }
-                    }) {
-                    Text("START")
+                        }) {
+                        Text("START")
+                    }
                 }
                 Spacer(modifier = Modifier.size(10.dp))
                 Row {

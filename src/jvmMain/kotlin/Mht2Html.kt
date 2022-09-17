@@ -113,9 +113,8 @@ object Mht2Html {
             }
 
             System.err.println("Boundary: $BOUNDARY")
-            val sunday = Sunday(raf, 0L, BOUNDARY.toByteArray())
             GlobalScope.launch(tp) {
-                val producer = produceOffSet(fileLocation, sunday, offsetList) // The 1 more thread
+                val producer = produceOffSet(fileLocation, offsetList) // The 1 more thread
                 repeat(threadCount) {
                     launchConsumer(fileLocation, imgOutputFolder, latchList[it], producer)
                 }
@@ -124,9 +123,10 @@ object Mht2Html {
     }
 
     private val DATE_REGEX = Regex(".*日期: (\\d{4}-\\d{2}-\\d{2}).*")
+    private val CHARSET_ISO_8859_1 = Charset.forName("ISO-8859-1")
     private fun RandomAccessFile.readLineInUtf8() = run {
         val rawLine: String = readLine()
-        String(rawLine.toByteArray(Charset.forName("ISO-8859-1")), UTF_8)
+        String(rawLine.toByteArray(CHARSET_ISO_8859_1), UTF_8)
     }
 
     private const val END_OF_HTML = "</table></body></html>"
@@ -208,7 +208,7 @@ object Mht2Html {
                 while (bfr.readLine().also { tmpLine = it } != null) {
                     lineCounter++
                     progress?.value = lineCounter.toFloat() / totalLineOfHtml.toFloat()
-                    if (lineCounter > totalLineOfHtml) { // The last line is END_OF_HTML line
+                    if (lineCounter >= totalLineOfHtml - 1) { // The last line is END_OF_HTML line
                         break
                     }
 
@@ -571,12 +571,12 @@ object Mht2Html {
 
     private fun CoroutineScope.produceOffSet(
         fileLocation: String,
-        sunday: Sunday,
         offsetList: ArrayList<Long>
     ) =
         produce {
             val raf = RandomAccessFile(fileLocation, "r")
             var nextOffset: Long
+            val sunday = Sunday(raf, 0L, BOUNDARY.toByteArray())
             while (sunday.getNextOffSet().also { nextOffset = it } > 0L) {
                 progress?.value = (nextOffset.toFloat() / raf.length().toFloat())
                 offsetList.add(nextOffset)
