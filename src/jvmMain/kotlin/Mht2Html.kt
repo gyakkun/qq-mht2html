@@ -52,7 +52,10 @@ object Mht2Html {
         val latchList = ArrayList<CountDownLatch>(threadCount)
         val offsetList = ArrayList<Long>()
 
-        processImage(raf, imgOutputPath, showAlert, errMsg, threadCount, latchList, tp, fileLocation, offsetList)
+        val processImgResult =
+            processImage(raf, imgOutputPath, showAlert, errMsg, threadCount, latchList, tp, fileLocation, offsetList)
+
+        if (!processImgResult) return@launch
 
         for (latch in latchList) latch.await()
 
@@ -83,7 +86,7 @@ object Mht2Html {
         tp: ExecutorCoroutineDispatcher,
         fileLocation: String,
         offsetList: ArrayList<Long>
-    ) {
+    ): Boolean {
         raf.use {
             val fileOffset: Long
             val imgOutputFolder = File(imgOutputPath)
@@ -105,7 +108,7 @@ object Mht2Html {
                         "Boundary not found in the first 1000 Bytes. MHT file may be not valid.",
                         -1L
                     )
-                    return
+                    return false
                 }
             }
             repeat(threadCount) {
@@ -119,6 +122,7 @@ object Mht2Html {
                     launchConsumer(fileLocation, imgOutputFolder, latchList[it], producer)
                 }
             }
+            return true
         }
     }
 
