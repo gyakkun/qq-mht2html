@@ -14,7 +14,6 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.CountDownLatch
-import kotlin.collections.HashMap
 import kotlin.text.Charsets.UTF_8
 
 @ExperimentalMaterialApi
@@ -133,10 +132,12 @@ object Mht2Html {
         String(rawLine.toByteArray(CHARSET_ISO_8859_1), UTF_8)
     }
 
+    private const val CRLF = "\r\n"
     private const val END_OF_HTML = "</table></body></html>"
     private const val MSG_OBJECT_PLACEHOLDER = "#MSG_OBJECT_PLACEHOLDER"
     private const val MSG_OBJECT_STR = "消息对象"
     private const val AFTER_MSG_OBJECT_INDICATOR = "<tr><td><div class=\"stl-3\"><div class=\"stl-4\">"
+    private const val IMG_MAX_WIDTH_HEIGHT_STYLE = "img {max-width: 66% !important;max-height: 512px;}"
     private val MSG_OBJECT_REGEX = Regex(".*消息对象:(.*?)</div>")
 
     private fun processHtml(
@@ -180,7 +181,8 @@ object Mht2Html {
             )
             remainOfFirstLine = firstLineExtractResult.remainOfFirstLine
             htmlHeadTemplate = firstLineExtractResult.htmlHeadTemplate
-            globalStyleSheet = firstLineExtractResult.globalStyleSheet
+            globalStyleSheet = firstLineExtractResult.globalStyleSheet + CRLF
+            globalStyleSheet += IMG_MAX_WIDTH_HEIGHT_STYLE
             startDateInUTC = firstLineExtractResult.date
         }
 
@@ -368,7 +370,6 @@ object Mht2Html {
     private const val CLOSING_STYLE_TAG = "</style>"
     private const val BEFORE_DATE_TEXT = "&nbsp;</div></td></tr>"
     private const val AFTER_DATE_TEXT = "</td></tr>"
-    private const val CRLF = "\r\n"
     private fun handleFirstLine(
         rawFirstLine: String,
         styleClassNameMap: MutableMap<String, String>,
