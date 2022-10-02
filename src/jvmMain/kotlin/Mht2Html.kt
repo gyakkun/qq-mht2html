@@ -438,7 +438,8 @@ object Mht2Html {
         return Pair(yyyyMmDd, YYYY_MM_DD_DATE_FORMATTER_UTC.parse(yyyyMmDd))
     }
 
-    private val TIME_REGEX = Regex(".*</div>(\\d+:\\d{2}:\\d{2})</div>.*")
+    private val TIME_REGEX_CN = Regex(".*</div>(\\d+:\\d{2}:\\d{2})</div>.*")
+    private val TIME_REGEX_EN = Regex(".*</div>(\\d+:\\d{2}:\\d{2}&nbsp;(AM|PM))</div>.*")
     private const val IMG_TAG_OPENING = "<IMG src=\"{"
     private const val IMG_TAG_CLOSING = "}.dat\">"
     private const val IMG_FILENAME_LENGTH = "96F1308E-DDB6-44b1-98D1-16EE42C52F27".length
@@ -494,14 +495,27 @@ object Mht2Html {
 
         val refactoredLineWithoutDateConverting = sb.toString()
         var refactoredLine = refactoredLineWithoutDateConverting
-        if (isConvertTimeToDate && TIME_REGEX.matches(refactoredLineWithoutDateConverting)) {
-            val time = TIME_REGEX.find(refactoredLineWithoutDateConverting)!!.groupValues[1]
-            val convertedDate = getConvertedDate(time, currentDate)
-            refactoredLine =
-                refactoredLineWithoutDateConverting.replaceFirst(
-                    time, YYYY_MM_DD_HH_MM_SS_Z_FORMATTER.format(convertedDate)
-                            + "<div class=\"qqts\" hidden>${convertedDate.time}</div>"
-                )
+        if (isConvertTimeToDate) {
+            var timeStr = ""
+            var convertedDate = Date()
+            var isWriteDate = true
+            if (TIME_REGEX_CN.matches(refactoredLineWithoutDateConverting)) {
+                timeStr = TIME_REGEX_CN.find(refactoredLineWithoutDateConverting)!!.groupValues[1]
+                convertedDate = getConvertedDate(timeStr, currentDate)
+            } else if (TIME_REGEX_EN.matches(refactoredLineWithoutDateConverting)) {
+                timeStr = TIME_REGEX_EN.find(refactoredLineWithoutDateConverting)!!.groupValues[1]
+                val trimmedTimeStr = timeStr.replaceFirst("&nbsp;", " ")
+                convertedDate = getConvertedDate(trimmedTimeStr, currentDate, isAmPm = true)
+            } else {
+                isWriteDate = false
+            }
+            if (isWriteDate) {
+                refactoredLine =
+                    refactoredLineWithoutDateConverting.replaceFirst(
+                        timeStr, YYYY_MM_DD_HH_MM_SS_Z_FORMATTER.format(convertedDate)
+                                + "<div class=\"qqts\" hidden>${convertedDate.time}</div>"
+                    )
+            }
         }
 
         // Handling IMG tags
@@ -531,9 +545,12 @@ object Mht2Html {
     }
 
     private val H_MM_SS_DATE_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("H:mm:ss")
-    private fun getConvertedDate(time: String, currentDate: Date): Date {
-        val localTime = LocalTime.parse(time, H_MM_SS_DATE_TIME_FORMATTER)
+    private val H_MM_SS_AA_DATE_TIME_FORMATTER: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("h:mm:ss a", Locale.ENGLISH)
 
+    private fun getConvertedDate(time: String, currentDate: Date, isAmPm: Boolean = false): Date {
+        val localTime =
+            LocalTime.parse(time, if (isAmPm) H_MM_SS_AA_DATE_TIME_FORMATTER else H_MM_SS_DATE_TIME_FORMATTER)
         val calIns = Calendar.getInstance()
         calIns.time = currentDate
         calIns.timeZone = TimeZone.getDefault() // Redundant
