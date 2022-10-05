@@ -22,6 +22,22 @@
 
 环境: Desktop R5-3500X@<!-- -->Fixed4.3GHz(6C6T)/32G@<!-- -->3200MHz/Kioxia CD6 SSD, Win10 21H2, Windows Defender 主动防护关
 
+输入: 27G, 内含70000+张图片, 约360000行聊天记录
+
+耗时: 总耗时~110s
+
+-------------------------
+
+环境: Desktop i9 12900K/32G@<!-- -->6000MHz/WD SN850 SSD, Win11 21H2, ESET 主动防护关
+
+输入: 同上
+
+耗时: 总耗时~60s
+
+-------------------
+
+环境: Desktop R5-3500X@<!-- -->Fixed4.3GHz(6C6T)/32G@<!-- -->3200MHz/Kioxia CD6 SSD, Win10 21H2, Windows Defender 主动防护关
+
 输入: 50G, 内含100000+张图片, 约800000行聊天记录
 
 耗时: 总耗时~150s
