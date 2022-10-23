@@ -5,6 +5,7 @@ import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.produce
 import org.apache.commons.codec.binary.Base64
 import org.apache.commons.imaging.Imaging
+import org.apache.commons.lang3.StringEscapeUtils
 import java.io.*
 import java.nio.charset.Charset
 import java.text.SimpleDateFormat
@@ -137,9 +138,11 @@ object Mht2Html {
     private const val MSG_OBJECT_PLACEHOLDER = "#MSG_OBJECT_PLACEHOLDER"
     private const val MSG_OBJECT_STR = "消息对象"
     private const val AFTER_MSG_OBJECT_INDICATOR = "<tr><td><div class=\"stl-3\"><div class=\"stl-4\">"
+    private val AFTER_MSG_OBJECT_INDICATOR_REGEX =
+        Regex("消息对象.*(<tr><td><div class=\"stl-[0-9]+\"><div class=\"stl-[0-9]+\">)")
     private const val IMG_MAX_WIDTH_HEIGHT_STYLE = "img {max-width: 66% !important;max-height: 512px;}"
     private val MSG_OBJECT_REGEX = Regex(".*消息对象:(.*?)</div>")
-
+    private val MSG_OBJECT_COUNT_MAP = HashMap<String, Int>()
     private fun processHtml(
         fileLocation: String,
         offsetList: ArrayList<Long>,
@@ -198,6 +201,7 @@ object Mht2Html {
 
         val totalLineOfHtml = lineNoEndOfHtml - lineNoStartOfHtml + 1
         var msgObject = MSG_OBJECT_REGEX.find(firstLine)!!.groupValues[1]
+        MSG_OBJECT_COUNT_MAP[msgObject] = 1
 
         FileReader(fileLocation, UTF_8).use { fr ->
             BufferedReader(fr).use { bfr ->
@@ -228,7 +232,13 @@ object Mht2Html {
                     )
 
                     if (refactoredLine.contains(MSG_OBJECT_STR)) {
-                        val newMsgObject = MSG_OBJECT_REGEX.find(refactoredLine)!!.groupValues[1]
+                        var newMsgObject = MSG_OBJECT_REGEX.find(refactoredLine)!!.groupValues[1]
+                        if (MSG_OBJECT_COUNT_MAP[newMsgObject] != null) {
+                            MSG_OBJECT_COUNT_MAP[newMsgObject] = MSG_OBJECT_COUNT_MAP[newMsgObject]!! + 1
+                            newMsgObject = newMsgObject + "#" + MSG_OBJECT_COUNT_MAP[newMsgObject]
+                        } else {
+                            MSG_OBJECT_COUNT_MAP[newMsgObject] = 1
+                        }
                         if (newMsgObject != msgObject) { // Bypass the first html line of mht file
                             writeFragmentFile(
                                 fileOutputPath,
@@ -246,9 +256,8 @@ object Mht2Html {
                             }
                             lineDeque.offer(
                                 refactoredLine.substring(
-                                    refactoredLine.indexOf(
-                                        AFTER_MSG_OBJECT_INDICATOR
-                                    )
+                                    AFTER_MSG_OBJECT_INDICATOR_REGEX.find(refactoredLine)?.groups?.get(1)?.range?.first
+                                        ?: 0
                                 )
                             )
                         }
@@ -286,7 +295,8 @@ object Mht2Html {
 
     private val ILLEGAL_CHAR_IN_FILENAME_REGEX = Regex("[#%&{}<>*$@`'+=:/\\\\?|\"]")
     private fun sanitizeFilename(filename: String): String {
-        return filename.replace(ILLEGAL_CHAR_IN_FILENAME_REGEX, "-")
+        return StringEscapeUtils.unescapeHtml4(filename)
+            .replace(ILLEGAL_CHAR_IN_FILENAME_REGEX, "-")
     }
 
     private fun countLineOfFileUntilTarget(fileLocation: String, targetOffset: String): Int {
