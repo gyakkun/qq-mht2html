@@ -318,10 +318,12 @@ object Mht2Html {
         }
     }
 
-    private val ILLEGAL_CHAR_IN_FILENAME_REGEX = Regex("[#%&{}<>*$@`'+=:/\\\\?|\"]")
+    private val ILLEGAL_CHAR_IN_FILENAME_REGEX = Regex("[%&{}<>*$@`'+=:/\\\\?|\"]")
+    private val WHITE_SPACE_REGEX = Regex("\\p{Z}")
     private fun sanitizeFilename(filename: String): String {
         return StringEscapeUtils.unescapeHtml4(filename)
             .replace(ILLEGAL_CHAR_IN_FILENAME_REGEX, "-")
+            .replace(WHITE_SPACE_REGEX, "_")
     }
 
     private fun countLineOfFileUntilTarget(fileLocation: String, targetOffset: String): Int {
