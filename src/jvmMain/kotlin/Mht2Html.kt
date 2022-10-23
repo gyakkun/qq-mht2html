@@ -36,7 +36,9 @@ object Mht2Html {
         lineLimit: Int = DEFAULT_LINE_LIMIT,
         showAlert: MutableState<Boolean>?,
         errMsg: MutableState<String>?,
-        progress: MutableState<Float>?
+        progress: MutableState<Float>?,
+        noHtml: Boolean = false,
+        noImage: Boolean = false
     ) = GlobalScope.launch {
         Mht2Html.showAlert = showAlert
         Mht2Html.errMsg = errMsg
@@ -53,7 +55,18 @@ object Mht2Html {
         val offsetList = ArrayList<Long>()
 
         val processImgResult =
-            processImage(raf, imgOutputPath, showAlert, errMsg, threadCount, latchList, tp, fileLocation, offsetList)
+            processImage(
+                raf,
+                imgOutputPath,
+                showAlert,
+                errMsg,
+                threadCount,
+                latchList,
+                tp,
+                fileLocation,
+                offsetList,
+                noImage = noImage
+            )
 
         if (!processImgResult) return@launch
 
@@ -61,18 +74,20 @@ object Mht2Html {
 
         showInfoBar(showAlert, errMsg, "Processing HTML...", -1L)
 
-        processHtml(
-            fileLocation,
-            offsetList,
-            fileOutputPath,
-            imgOutputPath,
-            lineLimit
-        )
+        if (!noHtml) {
+            processHtml(
+                fileLocation,
+                offsetList,
+                fileOutputPath,
+                imgOutputPath,
+                lineLimit
+            )
+        }
 
         val timingMsg = "TOTAL: Timing: ${System.currentTimeMillis() - timing} ms"
 
         showInfoBar(showAlert, errMsg, timingMsg, -1L)
-
+        progress!!.value = 1.0F
         tp.close()
     }
 
@@ -85,7 +100,8 @@ object Mht2Html {
         latchList: ArrayList<CountDownLatch>,
         tp: ExecutorCoroutineDispatcher,
         fileLocation: String,
-        offsetList: ArrayList<Long>
+        offsetList: ArrayList<Long>,
+        noImage: Boolean = false
     ): Boolean {
         raf.use {
             val fileOffset: Long
@@ -115,9 +131,18 @@ object Mht2Html {
                 latchList.add(CountDownLatch(1))
             }
 
+            if (noImage) {
+                showInfoBar(
+                    showAlert,
+                    errMsg,
+                    "No Image option checked. Skipping Image process.",
+                    -1L
+                )
+            }
+
             System.err.println("Boundary: $BOUNDARY")
             GlobalScope.launch(tp) {
-                val producer = produceOffSet(fileLocation, offsetList) // The 1 more thread
+                val producer = produceOffSet(fileLocation, offsetList, noImage = noImage) // The 1 more thread
                 repeat(threadCount) {
                     launchConsumer(fileLocation, imgOutputFolder, latchList[it], producer)
                 }
@@ -610,7 +635,8 @@ object Mht2Html {
 
     private fun CoroutineScope.produceOffSet(
         fileLocation: String,
-        offsetList: ArrayList<Long>
+        offsetList: ArrayList<Long>,
+        noImage: Boolean = false
     ) =
         produce {
             val raf = RandomAccessFile(fileLocation, "r")
@@ -636,6 +662,7 @@ object Mht2Html {
                 }
                 val beginOffsetOfB64 = raf.filePointer
                 val endOffsetOfB64 = offsetList[ls - 1]
+                if (noImage) break
                 send(Triple(beginOffsetOfB64, endOffsetOfB64, uuid))
             }
             this.channel.close()

@@ -43,7 +43,8 @@ private fun App(windowScope: FrameWindowScope) {
     val errMsg = remember { mutableStateOf("Error message.") }
     val showAlert = remember { mutableStateOf(false) }
     val progress = remember { mutableStateOf(0.0F) }
-
+    var noImage = remember { mutableStateOf(false) }
+    var noHtml = remember { mutableStateOf(false) }
 
     Surface {
         if (showAlert.value) {
@@ -141,6 +142,26 @@ private fun App(windowScope: FrameWindowScope) {
                 }
                 Spacer(modifier = Modifier.size(10.dp))
                 Row(modifier = Modifier.align(Alignment.Start)) {
+                    Text("No Image")
+                    Checkbox(
+                        checked = noImage.value,
+                        onCheckedChange = {
+                            noImage.value = it
+                        },
+                        modifier = Modifier.height(10.dp)
+                    )
+                    Spacer(modifier = Modifier.size(10.dp))
+                    Text("No Html")
+                    Checkbox(
+                        checked = noHtml.value,
+                        onCheckedChange = {
+                            noHtml.value = it
+                        },
+                        modifier = Modifier.height(10.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.size(10.dp))
+                Row(modifier = Modifier.align(Alignment.Start)) {
                     Button(
                         enabled = progress.value < 0.0001F || progress.value > 0.9999F,
                         onClick = {
@@ -193,7 +214,9 @@ private fun App(windowScope: FrameWindowScope) {
                                     lineLimit,
                                     showAlert,
                                     errMsg,
-                                    progress
+                                    progress,
+                                    noImage = noImage.value,
+                                    noHtml = noHtml.value
                                 )
                             }
                         }) {
