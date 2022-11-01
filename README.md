@@ -36,6 +36,13 @@
 
 -------------------
 
+环境: Desktop R9 7950X/64G@<!-- -->4800MHz/Samsung 980pro/PM983 SSD, Win10 21H2, Windows Defender 主动防护关
+
+输入: 同上
+
+耗时: 总耗时~45s
+
+-------------------
 环境: Desktop R9 7950X/64G@<!-- -->4800MHz/Samsung 980pro/PM983 SSD, Win10 21H2, Windows Defender 主动防护开
 
 输入: 同上
