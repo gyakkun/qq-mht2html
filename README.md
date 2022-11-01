@@ -36,6 +36,14 @@
 
 -------------------
 
+环境: Desktop R9 7950X/64G@<!-- -->4800MHz/Samsung 980pro/PM983 SSD, Win10 21H2, Windows Defender 主动防护开
+
+输入: 同上
+
+耗时: 总耗时~80s
+
+-------------------
+
 环境: Desktop R5-3500X@<!-- -->Fixed4.3GHz(6C6T)/32G@<!-- -->3200MHz/Kioxia CD6 SSD, Win10 21H2, Windows Defender 主动防护关
 
 输入: 50G, 内含100000+张图片, 约800000行聊天记录
