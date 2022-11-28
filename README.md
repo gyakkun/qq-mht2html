@@ -99,6 +99,14 @@
 
 ----------
 
+环境: 同上, Windows Defender 主动防护**关** 
+
+输入: 同上
+
+耗时: 总耗时~210s
+
+----------
+
 环境: Laptop Dell Latitude 5401 i7-9850H(6C12T)/24G@<!-- -->2400MHz/WD SN520 SSD, Win10 21H2, Windows Defender 主动防护关
 
 输入: 同上
