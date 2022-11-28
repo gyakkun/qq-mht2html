@@ -91,7 +91,7 @@
 
 ----------
 
-环境: Micron 3400 SSD, 其余同上
+环境: Micron 3400 SSD,  Windows Defender 主动防护**开**, 其余同上
 
 输入: 同上
 
