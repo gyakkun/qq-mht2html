@@ -616,7 +616,7 @@ object Mht2Html {
             lRaf.seek(beginOffsetOfB64)
             lRaf.read(ba)
             val decode = Base64.decodeBase64(ba)
-            val fileExt = kotlin.runCatching { Imaging.guessFormat(decode).extension }
+            val fileExt = kotlin.runCatching { Imaging.guessFormat(decode).defaultExtension }
                 .onFailure {
                     System.err.println(
                         "Exception occurs when guessing image format: uuid=$uuid," +
