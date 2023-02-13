@@ -254,7 +254,7 @@ object Mht2Html {
                         try {
                             lineCounter++
                             outerLineCounter.incrementAndGet()
-                            LOGGER.info("Handling line {}", outerLineCounter.get())
+                            LOGGER.debug("Handling line {}", outerLineCounter.get())
                             progress?.value = lineCounter.toFloat() / totalLineOfHtml.toFloat()
                             if (lineCounter >= totalLineOfHtml - 1) { // The last line is END_OF_HTML line
                                 break
@@ -318,7 +318,9 @@ object Mht2Html {
                                 lineDeque.offer(refactoredLine)
                             }
                         } catch (innerEx: Exception) {
-                            LOGGER.error("Failed to handle line ${outerLineCounter.get()}", innerEx)
+                            LOGGER.error("Failed to handle line ${outerLineCounter.get()}. Line content: ${tmpLine}.", innerEx)
+                            LOGGER.error("Please raise a Github issue and attach the log file where you think the exception you hit is important.")
+                            LOGGER.error("Please remember to remove any sensitive message in the previous lines of log.")
                         }
                     }
                     writeFragmentFile(
