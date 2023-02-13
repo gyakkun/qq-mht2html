@@ -194,8 +194,6 @@ object Mht2Html {
         val outerLineCounter = AtomicInteger(0)
 
         try {
-
-
             raf.use {
                 it.seek(firstBoundaryOffset)
                 var line: String
@@ -253,70 +251,74 @@ object Mht2Html {
                     lineDeque.offer(remainOfFirstLine)
                     var tmpLine: String?
                     while (bfr.readLine().also { tmpLine = it } != null) {
-                        lineCounter++
-                        outerLineCounter.incrementAndGet()
-                        LOGGER.info("Handling line {}", outerLineCounter.get())
-                        progress?.value = lineCounter.toFloat() / totalLineOfHtml.toFloat()
-                        if (lineCounter >= totalLineOfHtml - 1) { // The last line is END_OF_HTML line
-                            break
-                        }
-
-                        val line = tmpLine!!
-                        val (refactoredLine, newDate) = extractLineAndReplaceStyle(
-                            line,
-                            styleClassNameMap,
-                            currentDate,
-                            imgFileNameExtensionMap,
-                            imgOutputFolder
-                        )
-
-                        if (refactoredLine.contains(MSG_OBJECT_STR)) {
-                            var newMsgObject = MSG_OBJECT_REGEX.find(refactoredLine)!!.groupValues[1]
-                            if (MSG_OBJECT_COUNT_MAP[newMsgObject] != null) {
-                                MSG_OBJECT_COUNT_MAP[newMsgObject] = MSG_OBJECT_COUNT_MAP[newMsgObject]!! + 1
-                                newMsgObject = newMsgObject + "#" + MSG_OBJECT_COUNT_MAP[newMsgObject]
-                            } else {
-                                MSG_OBJECT_COUNT_MAP[newMsgObject] = 1
+                        try {
+                            lineCounter++
+                            outerLineCounter.incrementAndGet()
+                            LOGGER.info("Handling line {}", outerLineCounter.get())
+                            progress?.value = lineCounter.toFloat() / totalLineOfHtml.toFloat()
+                            if (lineCounter >= totalLineOfHtml - 1) { // The last line is END_OF_HTML line
+                                break
                             }
-                            if (newMsgObject != msgObject) { // Bypass the first html line of mht file
-                                writeFragmentFile(
-                                    fileOutputPath,
-                                    htmlHeadTemplate.replace(MSG_OBJECT_PLACEHOLDER, msgObject),
-                                    globalStyleSheet,
-                                    styleClassNameMap,
-                                    dateForHtmlHead,
-                                    lineDeque,
-                                    msgObject
-                                )
-                                msgObject = newMsgObject
-                                assert(newDate != null)
-                                if (newDate != null) {
+
+                            val line = tmpLine!!
+                            val (refactoredLine, newDate) = extractLineAndReplaceStyle(
+                                line,
+                                styleClassNameMap,
+                                currentDate,
+                                imgFileNameExtensionMap,
+                                imgOutputFolder
+                            )
+
+                            if (refactoredLine.contains(MSG_OBJECT_STR)) {
+                                var newMsgObject = MSG_OBJECT_REGEX.find(refactoredLine)!!.groupValues[1]
+                                if (MSG_OBJECT_COUNT_MAP[newMsgObject] != null) {
+                                    MSG_OBJECT_COUNT_MAP[newMsgObject] = MSG_OBJECT_COUNT_MAP[newMsgObject]!! + 1
+                                    newMsgObject = newMsgObject + "#" + MSG_OBJECT_COUNT_MAP[newMsgObject]
+                                } else {
+                                    MSG_OBJECT_COUNT_MAP[newMsgObject] = 1
+                                }
+                                if (newMsgObject != msgObject) { // Bypass the first html line of mht file
+                                    writeFragmentFile(
+                                        fileOutputPath,
+                                        htmlHeadTemplate.replace(MSG_OBJECT_PLACEHOLDER, msgObject),
+                                        globalStyleSheet,
+                                        styleClassNameMap,
+                                        dateForHtmlHead,
+                                        lineDeque,
+                                        msgObject
+                                    )
+                                    msgObject = newMsgObject
+                                    assert(newDate != null)
+                                    if (newDate != null) {
+                                        dateForHtmlHead = newDate
+                                    }
+                                    lineDeque.offer(
+                                        refactoredLine.substring(
+                                            AFTER_MSG_OBJECT_INDICATOR_REGEX.find(refactoredLine)?.groups?.get(1)?.range?.first
+                                                ?: 0
+                                        )
+                                    )
+                                }
+                            } else if (newDate != null) { // Time to write file
+                                if (lineDeque.size > lineLimit) {
+                                    writeFragmentFile(
+                                        fileOutputPath,
+                                        htmlHeadTemplate.replace(MSG_OBJECT_PLACEHOLDER, msgObject),
+                                        globalStyleSheet,
+                                        styleClassNameMap,
+                                        dateForHtmlHead,
+                                        lineDeque,
+                                        msgObject
+                                    )
                                     dateForHtmlHead = newDate
                                 }
-                                lineDeque.offer(
-                                    refactoredLine.substring(
-                                        AFTER_MSG_OBJECT_INDICATOR_REGEX.find(refactoredLine)?.groups?.get(1)?.range?.first
-                                            ?: 0
-                                    )
-                                )
+                                currentDate = newDate
+                                lineDeque.offer(refactoredLine)
+                            } else {
+                                lineDeque.offer(refactoredLine)
                             }
-                        } else if (newDate != null) { // Time to write file
-                            if (lineDeque.size > lineLimit) {
-                                writeFragmentFile(
-                                    fileOutputPath,
-                                    htmlHeadTemplate.replace(MSG_OBJECT_PLACEHOLDER, msgObject),
-                                    globalStyleSheet,
-                                    styleClassNameMap,
-                                    dateForHtmlHead,
-                                    lineDeque,
-                                    msgObject
-                                )
-                                dateForHtmlHead = newDate
-                            }
-                            currentDate = newDate
-                            lineDeque.offer(refactoredLine)
-                        } else {
-                            lineDeque.offer(refactoredLine)
+                        } catch (innerEx: Exception) {
+                            LOGGER.error("Failed to handle line ${outerLineCounter.get()}", innerEx)
                         }
                     }
                     writeFragmentFile(
