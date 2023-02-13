@@ -30,6 +30,11 @@ kotlin {
                 implementation("org.apache.commons:commons-imaging:1.0-alpha3")
                 implementation("commons-codec:commons-codec:1.15")
                 implementation("org.apache.commons:commons-lang3:3.12.0")
+
+                // Loggin
+                implementation("org.slf4j:slf4j-api:2.0.5")
+                implementation("org.slf4j:jul-to-slf4j:2.0.5")
+                implementation("ch.qos.logback:logback-classic:1.4.5")
             }
         }
         val jvmTest by getting

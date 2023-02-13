@@ -6,6 +6,7 @@ import kotlinx.coroutines.channels.produce
 import org.apache.commons.codec.binary.Base64
 import org.apache.commons.imaging.Imaging
 import org.apache.commons.lang3.StringEscapeUtils
+import org.slf4j.LoggerFactory
 import java.io.*
 import java.nio.charset.Charset
 import java.text.SimpleDateFormat
@@ -27,6 +28,7 @@ object Mht2Html {
     var showAlert: MutableState<Boolean>? = null
     var errMsg: MutableState<String>? = null
     var progress: MutableState<Float>? = null
+    val LOGGER = LoggerFactory.getLogger(Mht2Html::class.java)
 
     fun doJob(
         fileLocation: String,
@@ -43,7 +45,7 @@ object Mht2Html {
         Mht2Html.showAlert = showAlert
         Mht2Html.errMsg = errMsg
         Mht2Html.progress = progress
-        System.err.println("Thread count: $threadCount")
+        LOGGER.info("Thread count: $threadCount")
 
         showInfoBar(showAlert, errMsg, "Processing Images...", -1L)
         FILENAME_COUNTER.clear()
@@ -114,7 +116,7 @@ object Mht2Html {
                 if (line.contains("boundary=\"")) {
                     BOUNDARY = "--" + line.substring(line.indexOf("=") + 2, line.length - 1)
                     fileOffset = raf.filePointer
-                    System.err.println("First boundary offset: $fileOffset")
+                    LOGGER.info("First boundary offset: $fileOffset")
                     break
                 }
                 if (raf.filePointer > 1000) {
@@ -140,7 +142,7 @@ object Mht2Html {
                 )
             }
 
-            System.err.println("Boundary: $BOUNDARY")
+            LOGGER.info("Boundary: $BOUNDARY")
             GlobalScope.launch(tp) {
                 val producer = produceOffSet(fileLocation, offsetList, noImage = noImage) // The 1 more thread
                 repeat(threadCount) {
@@ -360,7 +362,7 @@ object Mht2Html {
             sanitizedFilenamePrefix + "_${"%03d".format(FILENAME_COUNTER[sanitizedFilenamePrefix]!!)}.html"
         val fragmentFile = File(fileOutputPath).resolve(fragmentFileName)
         if (fragmentFile.exists()) {
-            System.err.println("$fragmentFileName exists! Overwriting")
+            LOGGER.info("$fragmentFileName exists! Overwriting")
         }
         fragmentFile.createNewFile()
         FileWriter(fragmentFile, UTF_8).use { fw ->
@@ -567,7 +569,7 @@ object Mht2Html {
                 tmpIdxForImgTag + IMG_TAG_OPENING.length + IMG_FILENAME_LENGTH
             )
             if (imgFileNameExtensionMap[filename] == null) {
-                System.err.println("IMG $filename doesn't exist!")
+                LOGGER.info("IMG $filename doesn't exist!")
             }
             sb.append("<img src=\"$imgRelativeFolder/$filename.${imgFileNameExtensionMap[filename] ?: "dat"}\" loading=\"lazy\"/>")
             prevIdxForImgTag =
@@ -618,11 +620,11 @@ object Mht2Html {
             val decode = Base64.decodeBase64(ba)
             val fileExt = kotlin.runCatching { Imaging.guessFormat(decode).defaultExtension }
                 .onFailure {
-                    System.err.println(
+                    LOGGER.info(
                         "Exception occurs when guessing image format: uuid=$uuid," +
                                 " beginOffset=$beginOffsetOfB64, endOffset=$endOffsetOfB64"
                     )
-                    System.err.println(it.message)
+                    LOGGER.info(it.message)
                 }.getOrDefault("DAT")
 
             FileOutputStream(imgOutputFolder.resolve("$uuid.$fileExt")).use { fos ->
@@ -657,7 +659,7 @@ object Mht2Html {
                 while (raf.readLineInUtf8().also { line = it } != null) {
                     if (line.contains("Content-Location")) {
                         uuid = line.substring("Content-Location:{".length, line.indexOf("}.dat"))
-                        // System.err.println(uuid)
+                        // LOGGER.info(uuid)
                         raf.readLine()
                         break
                     }

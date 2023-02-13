@@ -1,6 +1,7 @@
 // Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 @file:OptIn(ExperimentalMaterialApi::class)
 
+import LoggingHelper.LOGGER
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -13,9 +14,14 @@ import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import kotlinx.coroutines.*
+import org.slf4j.LoggerFactory
 import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
+
+object LoggingHelper {
+    val LOGGER = LoggerFactory.getLogger(LoggingHelper.javaClass)
+}
 
 fun main() = application {
     Window(
@@ -194,7 +200,7 @@ private fun App(windowScope: FrameWindowScope) {
                                     threadCount = Integer.parseInt(threadCountStr)
                                     if (threadCount <= 0) threadCount = 1
                                 }.onFailure {
-                                    System.err.println("Thread count invalid. Using core number.")
+                                    LOGGER.info("Thread count invalid. Using core number.")
                                 }
 
                                 var lineLimit = Mht2Html.DEFAULT_LINE_LIMIT
@@ -202,7 +208,7 @@ private fun App(windowScope: FrameWindowScope) {
                                     lineLimit = Integer.parseInt(lineLimitStr)
                                     if (lineLimit <= 500) lineLimit = 500
                                 }.onFailure {
-                                    System.err.println("Thread count invalid. Using default 7500.")
+                                    LOGGER.info("Thread count invalid. Using default 7500.")
                                 }
 
 
@@ -250,7 +256,7 @@ suspend fun showInfoBar(
     launch {
         showAlert?.value = true
         errMsg?.value = msg
-        System.err.println(msg)
+        LOGGER.info(msg)
         if (delayMs < 0) return@launch
         delay(delayMs)
         showAlert?.value = false
