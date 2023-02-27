@@ -234,6 +234,7 @@ object Mht2Html {
 
             val totalLineOfHtml = lineNoEndOfHtml - lineNoStartOfHtml + 1
             var msgObject = MSG_OBJECT_REGEX.find(firstLine)!!.groupValues[1]
+            LOGGER.info("MSG OBJECT NAME: $msgObject")
             MSG_OBJECT_COUNT_MAP[msgObject] = 1
 
             FileReader(fileLocation, UTF_8).use { fr ->
@@ -288,6 +289,7 @@ object Mht2Html {
                                         msgObject
                                     )
                                     msgObject = newMsgObject
+                                    LOGGER.info("NEW MSG OBJECT NAME: $msgObject")
                                     assert(newDate != null)
                                     if (newDate != null) {
                                         dateForHtmlHead = newDate
@@ -318,8 +320,11 @@ object Mht2Html {
                                 lineDeque.offer(refactoredLine)
                             }
                         } catch (innerEx: Exception) {
-                            LOGGER.error("Failed to handle line ${outerLineCounter.get()}. Line content: ${tmpLine}.", innerEx)
-                            LOGGER.error("Please raise a Github issue and attach the log file where you think the exception you hit is important.")
+                            LOGGER.error(
+                                "Failed to handle line ${outerLineCounter.get()}. Line content: ${tmpLine}.",
+                                innerEx
+                            )
+                            LOGGER.error("Please raise a GitHub issue and attach the log file where you think the exception you hit is important.")
                             LOGGER.error("Please remember to remove any sensitive message in the previous lines of log.")
                         }
                     }
@@ -346,11 +351,13 @@ object Mht2Html {
     }
 
     private val ILLEGAL_CHAR_IN_FILENAME_REGEX = Regex("[%&{}<>*$@`'+=:/\\\\?|\"]")
-    private val WHITE_SPACE_REGEX = Regex("\\p{Z}")
+
+    // See: https://www.unicode.org/reports/tr44/#GC_Values_Table
+    private val BETTER_NOT_TO_HAVE_IN_FILENAME_REGEX = Regex("[\\p{C}\\p{Z}\\p{M}\\p{S}]")
     private fun sanitizeFilename(filename: String): String {
         return StringEscapeUtils.unescapeHtml4(filename)
-            .replace(ILLEGAL_CHAR_IN_FILENAME_REGEX, "-")
-            .replace(WHITE_SPACE_REGEX, "_")
+            .replace(BETTER_NOT_TO_HAVE_IN_FILENAME_REGEX, "_")
+            .replace(ILLEGAL_CHAR_IN_FILENAME_REGEX, "_")
     }
 
     private fun countLineOfFileUntilTarget(fileLocation: String, targetOffset: String): Int {
