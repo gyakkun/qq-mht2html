@@ -53,13 +53,13 @@ compose.desktop {
             copyright = "(C) 2022 gyakkun. Some rights reserved."
             vendor = "gyakkun"
             appResourcesRootDir.set(project.layout.projectDirectory.dir("resources"))
-            includeAllModules = true
-//             modules(
-//                 "java.logging",
-//                 "java.naming",
-//                 "jdk.crypto.ec",
-//                 "javax.naming"
-//             )
+            // includeAllModules = true
+             modules(
+                 "java.logging",
+                 "java.naming",
+                 "jdk.crypto.ec",
+                 "javax.naming"
+             )
 
             val iconsRoot = project.file("src/jvmMain/resources/drawables")
 
