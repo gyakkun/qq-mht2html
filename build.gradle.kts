@@ -1,6 +1,4 @@
-import org.jetbrains.compose.compose
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("multiplatform")
@@ -53,13 +51,14 @@ compose.desktop {
             copyright = "(C) 2022 gyakkun. Some rights reserved."
             vendor = "gyakkun"
             appResourcesRootDir.set(project.layout.projectDirectory.dir("resources"))
-            includeAllModules = true
-//             modules(
-//                 "java.logging",
-//                 "java.naming",
-//                 "jdk.crypto.ec",
-//                 "javax.naming"
-//             )
+            // includeAllModules = true
+            modules(
+                "java.logging",
+                "java.naming",
+                "jdk.crypto.ec",
+                "java.base",
+                "java.desktop",
+            )
 
             val iconsRoot = project.file("src/jvmMain/resources/drawables")
 
