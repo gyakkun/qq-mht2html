@@ -46,6 +46,10 @@ object Mht2Html {
         Mht2Html.showAlert = showAlert
         Mht2Html.errMsg = errMsg
         Mht2Html.progress = progress
+        LOGGER.info("Start to process input file: $fileLocation")
+        LOGGER.info("Output location: $fileOutputPath")
+        LOGGER.info("Img folder: $imgOutputPath")
+        LOGGER.info("Line limit: $lineLimit")
         LOGGER.info("Thread count: $threadCount")
 
         showInfoBar(showAlert, errMsg, "Processing Images...", -1L)
@@ -121,6 +125,8 @@ object Mht2Html {
                     break
                 }
                 if (raf.filePointer > 1000) {
+                    LOGGER.error("Boundary not found in the first 1000 Bytes. MHT file may be not valid.")
+                    LOGGER.error("Last line read: $line")
                     showInfoBar(
                         showAlert,
                         errMsg,
@@ -135,6 +141,7 @@ object Mht2Html {
             }
 
             if (noImage) {
+                LOGGER.warn("No Image option checked. Skipping Image process.")
                 showInfoBar(
                     showAlert,
                     errMsg,
@@ -163,14 +170,14 @@ object Mht2Html {
 
     private const val CRLF = "\r\n"
     private const val END_OF_HTML = "</table></body></html>"
-    private const val MSG_OBJECT_PLACEHOLDER = "#MSG_OBJECT_PLACEHOLDER"
-    private const val MSG_OBJECT_STR = "消息对象"
-    private const val AFTER_MSG_OBJECT_INDICATOR = "<tr><td><div class=\"stl-3\"><div class=\"stl-4\">"
-    private val AFTER_MSG_OBJECT_INDICATOR_REGEX =
+    private const val MSG_CONTACT_PLACEHOLDER = "#MSG_CONTACT_PLACEHOLDER"
+    private const val MSG_CONTACT_STR = "消息对象"
+    private const val AFTER_MSG_CONTACT_INDICATOR = "<tr><td><div class=\"stl-3\"><div class=\"stl-4\">"
+    private val AFTER_MSG_CONTACT_INDICATOR_REGEX =
         Regex("消息对象.*(<tr><td><div class=\"stl-[0-9]+\"><div class=\"stl-[0-9]+\">)")
     private const val IMG_MAX_WIDTH_HEIGHT_STYLE = "img {max-width: 66% !important;max-height: 512px;}"
-    private val MSG_OBJECT_REGEX = Regex(".*消息对象:(.*?)</div>")
-    private val MSG_OBJECT_COUNT_MAP = HashMap<String, Int>()
+    private val MSG_CONTACT_REGEX = Regex(".*消息对象:(.*?)</div>")
+    private val MSG_CONTACT_COUNT_MAP = HashMap<String, Int>()
     private suspend fun processHtml(
         fileLocation: String,
         offsetList: ArrayList<Long>,
@@ -178,6 +185,8 @@ object Mht2Html {
         imgOutputPath: String,
         lineLimit: Int
     ) {
+        LOGGER.info("Start processing html.")
+
         val styleClassNameMap = ConcurrentHashMap<String, String>()
         val lineDeque = ConcurrentLinkedDeque<String>()
         val raf = RandomAccessFile(fileLocation, "r")
@@ -224,18 +233,22 @@ object Mht2Html {
 
             // Count Lines
 
-            // 1) How many lines from the head of file to start point of the HTML part
+            // 1) How many lines from the head of file to end point of the HTML part
             val lineNoEndOfHtml = countLineOfFileUntilTarget(fileLocation, END_OF_HTML)
+            LOGGER.info("Q: How many lines from the head of file to end point of the HTML part? A: $lineNoEndOfHtml")
 
             // 2) How many lines from the head of file to start point of the HTML part
             val lineNoStartOfHtml = countLineOfFileUntilTarget(fileLocation, "<html")
+            LOGGER.info("Q: How many lines from the head of file to start point of the HTML part? A: $lineNoStartOfHtml")
 
             // 3) Get how many lines of the html part
 
             val totalLineOfHtml = lineNoEndOfHtml - lineNoStartOfHtml + 1
-            var msgObject = MSG_OBJECT_REGEX.find(firstLine)!!.groupValues[1]
-            LOGGER.info("MSG OBJECT NAME: $msgObject")
-            MSG_OBJECT_COUNT_MAP[msgObject] = 1
+            LOGGER.info("Total line of html: $totalLineOfHtml")
+
+            var msgContact = MSG_CONTACT_REGEX.find(firstLine)!!.groupValues[1]
+            LOGGER.info("FIRST MSG CONTACT NAME: $msgContact")
+            MSG_CONTACT_COUNT_MAP[msgContact] = 1
 
             FileReader(fileLocation, UTF_8).use { fr ->
                 BufferedReader(fr).use { bfr ->
@@ -270,47 +283,48 @@ object Mht2Html {
                                 imgOutputFolder
                             )
 
-                            if (refactoredLine.contains(MSG_OBJECT_STR)) {
-                                var newMsgObject = MSG_OBJECT_REGEX.find(refactoredLine)!!.groupValues[1]
-                                if (MSG_OBJECT_COUNT_MAP[newMsgObject] != null) {
-                                    MSG_OBJECT_COUNT_MAP[newMsgObject] = MSG_OBJECT_COUNT_MAP[newMsgObject]!! + 1
-                                    newMsgObject = newMsgObject + "#" + MSG_OBJECT_COUNT_MAP[newMsgObject]
+                            if (refactoredLine.contains(MSG_CONTACT_STR)) {
+                                var newMsgContact = MSG_CONTACT_REGEX.find(refactoredLine)!!.groupValues[1]
+                                if (MSG_CONTACT_COUNT_MAP[newMsgContact] != null) {
+                                    MSG_CONTACT_COUNT_MAP[newMsgContact] = MSG_CONTACT_COUNT_MAP[newMsgContact]!! + 1
+                                    newMsgContact = newMsgContact + "#" + MSG_CONTACT_COUNT_MAP[newMsgContact]
                                 } else {
-                                    MSG_OBJECT_COUNT_MAP[newMsgObject] = 1
+                                    MSG_CONTACT_COUNT_MAP[newMsgContact] = 1
                                 }
-                                if (newMsgObject != msgObject) { // Bypass the first html line of mht file
+                                if (newMsgContact != msgContact) { // Bypass the first html line of mht file
+                                    LOGGER.info("NEW MSG CONTACT NAME: $newMsgContact. Writing to new file.")
                                     writeFragmentFile(
                                         fileOutputPath,
-                                        htmlHeadTemplate.replace(MSG_OBJECT_PLACEHOLDER, msgObject),
+                                        htmlHeadTemplate.replace(MSG_CONTACT_PLACEHOLDER, msgContact),
                                         globalStyleSheet,
                                         styleClassNameMap,
                                         dateForHtmlHead,
                                         lineDeque,
-                                        msgObject
+                                        msgContact
                                     )
-                                    msgObject = newMsgObject
-                                    LOGGER.info("NEW MSG OBJECT NAME: $msgObject")
+                                    msgContact = newMsgContact
                                     assert(newDate != null)
                                     if (newDate != null) {
                                         dateForHtmlHead = newDate
                                     }
                                     lineDeque.offer(
                                         refactoredLine.substring(
-                                            AFTER_MSG_OBJECT_INDICATOR_REGEX.find(refactoredLine)?.groups?.get(1)?.range?.first
+                                            AFTER_MSG_CONTACT_INDICATOR_REGEX.find(refactoredLine)?.groups?.get(1)?.range?.first
                                                 ?: 0
                                         )
                                     )
                                 }
                             } else if (newDate != null) { // Time to write file
                                 if (lineDeque.size > lineLimit) {
+                                    LOGGER.info("Over line limit: ${lineDeque.size} > $lineLimit. Writing to new file.")
                                     writeFragmentFile(
                                         fileOutputPath,
-                                        htmlHeadTemplate.replace(MSG_OBJECT_PLACEHOLDER, msgObject),
+                                        htmlHeadTemplate.replace(MSG_CONTACT_PLACEHOLDER, msgContact),
                                         globalStyleSheet,
                                         styleClassNameMap,
                                         dateForHtmlHead,
                                         lineDeque,
-                                        msgObject
+                                        msgContact
                                     )
                                     dateForHtmlHead = newDate
                                 }
@@ -328,14 +342,15 @@ object Mht2Html {
                             LOGGER.error("Please remember to remove any sensitive message in the previous lines of log.")
                         }
                     }
+                    LOGGER.info("Writing last piece of file.")
                     writeFragmentFile(
                         fileOutputPath,
-                        htmlHeadTemplate.replace(MSG_OBJECT_PLACEHOLDER, msgObject),
+                        htmlHeadTemplate.replace(MSG_CONTACT_PLACEHOLDER, msgContact),
                         globalStyleSheet,
                         styleClassNameMap,
                         dateForHtmlHead,
                         lineDeque,
-                        msgObject
+                        msgContact
                     )
                 }
             }
@@ -384,9 +399,13 @@ object Mht2Html {
         styleClassNameMap: ConcurrentHashMap<String, String>,
         dateForHtmlHead: Date,
         lineDeque: ConcurrentLinkedDeque<String>,
-        msgObject: String
+        msgContact: String
     ) {
-        val sanitizedFilenamePrefix = sanitizeFilename(msgObject)
+        LOGGER.info("Going to write to $fileOutputPath")
+        val sanitizedFilenamePrefix = sanitizeFilename(msgContact)
+        if (msgContact != sanitizedFilenamePrefix) {
+            LOGGER.warn("Msg contact $msgContact has been sanitized to: $sanitizedFilenamePrefix ")
+        }
         FILENAME_COUNTER.putIfAbsent(sanitizedFilenamePrefix, 0)
         FILENAME_COUNTER[sanitizedFilenamePrefix] = FILENAME_COUNTER[sanitizedFilenamePrefix]!! + 1
         val fileCount = FILENAME_COUNTER[sanitizedFilenamePrefix]
@@ -394,9 +413,10 @@ object Mht2Html {
             sanitizedFilenamePrefix + "_${"%03d".format(FILENAME_COUNTER[sanitizedFilenamePrefix]!!)}.html"
         val fragmentFile = File(fileOutputPath).resolve(fragmentFileName)
         if (fragmentFile.exists()) {
-            LOGGER.info("$fragmentFileName exists! Overwriting")
+            LOGGER.warn("$fragmentFileName exists! Overwriting")
         }
         fragmentFile.createNewFile()
+        LOGGER.info("New file ${fragmentFile.absolutePath} created. Writing...")
         FileWriter(fragmentFile, UTF_8).use { fw ->
             BufferedWriter(fw).use { bfw ->
                 var fileHead = htmlHeadTemplate.replace(
@@ -416,6 +436,7 @@ object Mht2Html {
                 bfw.write(END_OF_HTML)
             }
         }
+        LOGGER.info("Successfully wrote to ${fragmentFile.absolutePath} .")
     }
 
     private fun getImgFileNameExtensionMap(imgOutputFolder: File): Map<String, String> {
@@ -485,8 +506,8 @@ object Mht2Html {
         sb.append(CRLF)
         sb.append(dateLineWithPlaceHolder)
         var htmlHeadTemplate = sb.toString()
-        val msgObj = MSG_OBJECT_REGEX.find(htmlHeadTemplate)!!.groupValues[1]
-        htmlHeadTemplate = htmlHeadTemplate.replace(msgObj, MSG_OBJECT_PLACEHOLDER)
+        val msgObj = MSG_CONTACT_REGEX.find(htmlHeadTemplate)!!.groupValues[1]
+        htmlHeadTemplate = htmlHeadTemplate.replace(msgObj, MSG_CONTACT_PLACEHOLDER)
 
         return ExtractFirstLineResult(
             firstLine.substring(endOfDateCellPlusOne),
@@ -641,6 +662,7 @@ object Mht2Html {
         channel: ReceiveChannel<Triple<Long, Long, String>>
     ) = launch {
         val lRaf = RandomAccessFile(fileLocation, "r")
+        LOGGER.info("Consumer launched.")
         for (msg in channel) {
             val beginOffsetOfB64 = msg.first
             val endOffsetOfB64 = msg.second
@@ -652,11 +674,11 @@ object Mht2Html {
             val decode = Base64.decodeBase64(ba)
             val fileExt = kotlin.runCatching { Imaging.guessFormat(decode).defaultExtension }
                 .onFailure {
-                    LOGGER.info(
+                    LOGGER.error(
                         "Exception occurs when guessing image format: uuid=$uuid," +
                                 " beginOffset=$beginOffsetOfB64, endOffset=$endOffsetOfB64"
                     )
-                    LOGGER.info(it.message)
+                    LOGGER.error("Ex: ", it)
                 }.getOrDefault("DAT")
 
             FileOutputStream(imgOutputFolder.resolve("$uuid.$fileExt")).use { fos ->
@@ -666,6 +688,7 @@ object Mht2Html {
                 }
             }
         }
+        LOGGER.info("Consumer shutting down...")
         latch.countDown()
     }
 
@@ -678,6 +701,7 @@ object Mht2Html {
             val raf = RandomAccessFile(fileLocation, "r")
             var nextOffset: Long
             val sunday = Sunday(raf, 0L, BOUNDARY.toByteArray())
+            LOGGER.info("Running Sunday algorithm to locate boundary")
             while (sunday.getNextOffSet().also { nextOffset = it } > 0L) {
                 progress?.value = (nextOffset.toFloat() / raf.length().toFloat())
                 offsetList.add(nextOffset)
@@ -701,6 +725,7 @@ object Mht2Html {
                 if (noImage) break
                 send(Triple(beginOffsetOfB64, endOffsetOfB64, uuid))
             }
+            LOGGER.info("Sunday algorithm ended.")
             this.channel.close()
         }
 }
