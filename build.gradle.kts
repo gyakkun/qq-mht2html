@@ -17,7 +17,7 @@ repositories {
 kotlin {
     jvm {
         compilations.all {
-            kotlinOptions.jvmTarget = "11"
+            kotlinOptions.jvmTarget = "17"
         }
         withJava()
     }
@@ -30,9 +30,9 @@ kotlin {
                 implementation("org.apache.commons:commons-lang3:3.12.0")
 
                 // Loggin
-                implementation("org.slf4j:slf4j-api:2.0.5")
-                implementation("org.slf4j:jul-to-slf4j:2.0.5")
-                implementation("ch.qos.logback:logback-classic:1.4.5")
+                implementation("org.slf4j:slf4j-api:2.0.7")
+                implementation("org.slf4j:jul-to-slf4j:2.0.7")
+                implementation("ch.qos.logback:logback-classic:1.4.7")
             }
         }
         val jvmTest by getting
@@ -48,7 +48,7 @@ compose.desktop {
 
             packageVersion = project.version as String
             description = "QQ Mht2html"
-            copyright = "(C) 2022 gyakkun. Some rights reserved."
+            copyright = "(C) 2022-2023 gyakkun. Some rights reserved."
             vendor = "gyakkun"
             appResourcesRootDir.set(project.layout.projectDirectory.dir("resources"))
             // includeAllModules = true
