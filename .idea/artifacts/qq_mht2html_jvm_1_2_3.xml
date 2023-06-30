@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="qq-mht2html-jvm-1.2.3">
+    <output-path>$PROJECT_DIR$/build/libs</output-path>
+    <root id="archive" name="qq-mht2html-jvm-1.2.3.jar">
+      <element id="module-output" name="qq-mht2html.jvmMain" />
+    </root>
+  </artifact>
+</component>
