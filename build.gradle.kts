@@ -1,3 +1,4 @@
+import org.gradle.process.internal.JvmOptions
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
@@ -14,9 +15,16 @@ repositories {
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
 }
 
+
+//java {
+//    sourceCompatibility = JavaVersion.VERSION_20
+//    targetCompatibility = JavaVersion.VERSION_20
+// }
+
 kotlin {
     jvm {
         compilations.all {
+            // kotlinOptions.jvmTarget = "20"
             kotlinOptions.jvmTarget = "17"
         }
         withJava()
@@ -27,12 +35,13 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation("org.apache.commons:commons-imaging:1.0-alpha3")
                 implementation("commons-codec:commons-codec:1.15")
-                implementation("org.apache.commons:commons-lang3:3.12.0")
+                implementation("org.apache.commons:commons-text:1.10.0")
 
-                // Loggin
-                implementation("org.slf4j:slf4j-api:2.0.7")
-                implementation("org.slf4j:jul-to-slf4j:2.0.7")
-                implementation("ch.qos.logback:logback-classic:1.4.7")
+
+                // Logging
+                implementation("org.slf4j:slf4j-api:2.0.9")
+                implementation("org.slf4j:jul-to-slf4j:2.0.9")
+                implementation("ch.qos.logback:logback-classic:1.4.11")
             }
         }
         val jvmTest by getting

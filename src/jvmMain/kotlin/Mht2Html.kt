@@ -5,7 +5,7 @@ import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.produce
 import org.apache.commons.codec.binary.Base64
 import org.apache.commons.imaging.Imaging
-import org.apache.commons.lang3.StringEscapeUtils
+import org.apache.commons.text.StringEscapeUtils
 import org.slf4j.LoggerFactory
 import java.io.*
 import java.nio.charset.Charset
