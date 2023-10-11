@@ -293,7 +293,7 @@ object Mht2Html {
                                 }
                                 if (newMsgContact != msgContact) { // Bypass the first html line of mht file
                                     LOGGER.info("NEW MSG CONTACT NAME: $newMsgContact. Writing to new file.")
-                                    writeFragmentFile(
+                                    writeFragmentFileWithCatch(
                                         fileOutputPath,
                                         htmlHeadTemplate.replace(MSG_CONTACT_PLACEHOLDER, msgContact),
                                         globalStyleSheet,
@@ -317,7 +317,7 @@ object Mht2Html {
                             } else if (newDate != null) { // Time to write file
                                 if (lineDeque.size > lineLimit) {
                                     LOGGER.info("Over line limit: ${lineDeque.size} > $lineLimit. Writing to new file.")
-                                    writeFragmentFile(
+                                    writeFragmentFileWithCatch(
                                         fileOutputPath,
                                         htmlHeadTemplate.replace(MSG_CONTACT_PLACEHOLDER, msgContact),
                                         globalStyleSheet,
@@ -343,7 +343,7 @@ object Mht2Html {
                         }
                     }
                     LOGGER.info("Writing last piece of file.")
-                    writeFragmentFile(
+                    writeFragmentFileWithCatch(
                         fileOutputPath,
                         htmlHeadTemplate.replace(MSG_CONTACT_PLACEHOLDER, msgContact),
                         globalStyleSheet,
@@ -369,10 +369,22 @@ object Mht2Html {
 
     // See: https://www.unicode.org/reports/tr44/#GC_Values_Table
     private val BETTER_NOT_TO_HAVE_IN_FILENAME_REGEX = Regex("[\\p{C}\\p{Z}\\p{M}\\p{S}]")
+    private const val FILE_NAME_LENGTH_THRESHOLD = 32
     private fun sanitizeFilename(filename: String): String {
         return StringEscapeUtils.unescapeHtml4(filename)
             .replace(BETTER_NOT_TO_HAVE_IN_FILENAME_REGEX, "_")
             .replace(ILLEGAL_CHAR_IN_FILENAME_REGEX, "_")
+            .let {
+                if (it.length > FILE_NAME_LENGTH_THRESHOLD) {
+                    LOGGER.warn("Filename too long: $filename")
+                    val remain = FILE_NAME_LENGTH_THRESHOLD - it.length
+                    val res = it.substring(0, it.length.coerceAtMost(FILE_NAME_LENGTH_THRESHOLD)) + "_R${remain}"
+                    LOGGER.warn("Stripped to $res")
+                    res
+                } else {
+                    it
+                }
+            }
     }
 
     private fun countLineOfFileUntilTarget(fileLocation: String, targetOffset: String): Int {
@@ -391,6 +403,31 @@ object Mht2Html {
     }
 
     private val FILENAME_COUNTER = HashMap<String, Int>()
+
+    private fun writeFragmentFileWithCatch(
+        fileOutputPath: String,
+        htmlHeadTemplate: String,
+        globalStyleSheet: String,
+        styleClassNameMap: ConcurrentHashMap<String, String>,
+        dateForHtmlHead: Date,
+        lineDeque: ConcurrentLinkedDeque<String>,
+        msgContact: String
+    ) = runCatching {
+        writeFragmentFile(
+            fileOutputPath,
+            htmlHeadTemplate,
+            globalStyleSheet,
+            styleClassNameMap,
+            dateForHtmlHead,
+            lineDeque,
+            msgContact
+        )
+    }.onFailure {
+        LOGGER.error(
+            "Exception when writing fragment file. msgContact=$msgContact. fileOutputPath=$fileOutputPath : ",
+            it
+        )
+    }
 
     private fun writeFragmentFile(
         fileOutputPath: String,
