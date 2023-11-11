@@ -1,4 +1,3 @@
-import org.gradle.process.internal.JvmOptions
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
@@ -16,16 +15,15 @@ repositories {
 }
 
 
-//java {
-//    sourceCompatibility = JavaVersion.VERSION_20
-//    targetCompatibility = JavaVersion.VERSION_20
-// }
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+ }
 
 kotlin {
     jvm {
         compilations.all {
-            // kotlinOptions.jvmTarget = "20"
-            kotlinOptions.jvmTarget = "17"
+             kotlinOptions.jvmTarget = "21"
         }
         withJava()
     }
@@ -34,8 +32,8 @@ kotlin {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation("org.apache.commons:commons-imaging:1.0-alpha3")
-                implementation("commons-codec:commons-codec:1.15")
-                implementation("org.apache.commons:commons-text:1.10.0")
+                implementation("commons-codec:commons-codec:1.16.0")
+                implementation("org.apache.commons:commons-text:1.11.0")
 
 
                 // Logging
