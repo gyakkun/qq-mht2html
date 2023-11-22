@@ -19,6 +19,14 @@ class Sunday(
         buf = ByteArray(bufSize)
     }
 
+    val sequence
+        get() = sequence {
+            var next: Long
+            while (getNextOffSet().also { next = it } > 0) {
+                yield(next)
+            }
+        }
+
     fun getNextOffSet(): Long {
         if (rafOffSet >= raf.length()) return -1L
         outer@

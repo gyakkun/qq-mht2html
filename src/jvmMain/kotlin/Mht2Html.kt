@@ -792,17 +792,14 @@ class Mht2Html(
     ) =
         produce {
             val raf = RandomAccessFile(fileLocation, "r")
-            var nextOffset: Long
             val sunday = Sunday(raf, initOffset, boundaryText.toByteArray())
             var previousOffset = -1L
             var shouldBreak = noImage && rank != 0
             var counter = 0
             LOGGER.info("[P${rank + 1}/$totalProducerCount] Running Sunday algorithm to locate boundary")
-            while (sunday.getNextOffSet().also { nextOffset = it } > 0L) {
+            for (nextOffset in sunday.sequence) {
                 if (shouldBreak) break
-                if (counter == 0 && nextOffset >= thresholdOffset) {
-                    break
-                }
+                if (counter == 0 && nextOffset >= thresholdOffset) break
                 shouldBreak = nextOffset >= thresholdOffset
                 counter++
                 updateProgress(nextOffset - initOffset, raf.length() / totalProducerCount)
@@ -832,7 +829,12 @@ class Mht2Html(
             LOGGER.info("[P${rank + 1}/$totalProducerCount] Sunday algorithm ended.")
             this.channel.close()
             updateProgress(0L, 1L)
-            showInfoBar(showAlert, errMsg, "[P${rank + 1}/$totalProducerCount] Image producer done. Waiting for other producers...", -1L)
+            showInfoBar(
+                showAlert,
+                errMsg,
+                "[P${rank + 1}/$totalProducerCount] Image producer done. Waiting for other producers...",
+                -1L
+            )
         }
 
     private fun updateProgress(relativeOffset: Long, chunkSize: Long) =
