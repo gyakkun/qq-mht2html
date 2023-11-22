@@ -32,6 +32,14 @@
 耗时: 总耗时~596s
 
 -------------------------
+
+环境: Laptop Dell Precision 3581 i7-13800H@<!-- -->50W(14C20T)/32G@<!-- -->4800MHz/Phison E13T SSD(R)+WD SN740 SSD(W), Win10 22H2, Windows Defender 主动防护关
+
+输入: 同上
+
+耗时: 总耗时~326s
+
+-------------------------
 <br/><br/>
 </details>
 
