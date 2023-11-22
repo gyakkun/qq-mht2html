@@ -177,6 +177,8 @@ class Mht2Html(
 
         latch.await()
 
+        LOGGER.info("Image: Timing: ${System.currentTimeMillis() - timing} ms")
+
         showInfoBar(showAlert, errMsg, "Processing HTML...", -1L)
 
         if (!noHtml) {
@@ -186,9 +188,10 @@ class Mht2Html(
         }
 
         val timingMsg = "TOTAL: Timing: ${System.currentTimeMillis() - timing} ms"
+        LOGGER.info(timingMsg)
 
         showInfoBar(showAlert, errMsg, timingMsg, -1L)
-        progress!!.value = 1.0F
+        updateProgress(1L, 1L)
         tp.close()
     }
 
@@ -356,7 +359,7 @@ class Mht2Html(
                                 lineCounter++
                                 outerLineCounter.incrementAndGet()
                                 LOGGER.debug("Handling line {}", outerLineCounter.get())
-                                progress?.value = lineCounter.toFloat() / totalLineOfHtml.toFloat()
+                                updateProgress(lineCounter.toLong(), totalLineOfHtml.toLong())
                                 if (lineCounter >= totalLineOfHtml - 1) { // The last line is END_OF_HTML line
                                     break
                                 }
@@ -736,6 +739,7 @@ class Mht2Html(
 
     data class PerLineExtractResult(val extractedAndReplaced: String, val newDate: Date?)
 
+    private val writtenFilenameSet = ConcurrentHashMap.newKeySet<String>()
     private fun CoroutineScope.launchConsumer(
         producerRank: Int,
         consumerRank: Int,
@@ -743,11 +747,14 @@ class Mht2Html(
         channel: ReceiveChannel<Triple<Long, Long, String>>
     ) = launch {
         val lRaf = RandomAccessFile(fileLocation, "r")
-        LOGGER.info("[$producerRank:$consumerRank] Consumer launched.")
+        LOGGER.info("[P${producerRank + 1}:C${consumerRank + 1}] Consumer launched.")
         for (msg in channel) {
             val beginOffsetOfB64 = msg.first
             val endOffsetOfB64 = msg.second
             val uuid = msg.third
+            if (writtenFilenameSet.contains(uuid)) {
+                LOGGER.error("$uuid already written!")
+            }
             val b64Len = endOffsetOfB64 - beginOffsetOfB64
             val ba = ByteArray(b64Len.toInt())
             lRaf.seek(beginOffsetOfB64)
@@ -768,8 +775,9 @@ class Mht2Html(
                     bfos.flush()
                 }
             }
+            writtenFilenameSet.add(uuid)
         }
-        LOGGER.info("Consumer shutting down...")
+        LOGGER.info("[P${producerRank + 1}:C${consumerRank + 1}] Consumer shutting down...")
         latch.countDown()
     }
 
@@ -785,10 +793,15 @@ class Mht2Html(
             var nextOffset: Long
             val sunday = Sunday(raf, initOffset, boundaryText.toByteArray())
             var previousOffset = -1L
+            var shouldBreak = false
             var counter = 0
-            LOGGER.info("[$rank/$totalProducerCount] Running Sunday algorithm to locate boundary")
+            LOGGER.info("[P${rank + 1}/$totalProducerCount] Running Sunday algorithm to locate boundary")
             while (sunday.getNextOffSet().also { nextOffset = it } > 0L) {
-                if (counter == 0 && nextOffset >= thresholdOffset) break
+                if (shouldBreak) break
+                if (counter == 0 && nextOffset >= thresholdOffset) {
+                    break
+                }
+                shouldBreak = nextOffset >= thresholdOffset
                 counter++
                 updateProgress(nextOffset - initOffset, raf.length() / totalProducerCount)
                 if ((rank == 0 && counter < 3) || counter < 2) {
@@ -813,18 +826,17 @@ class Mht2Html(
                 previousOffset = nextOffset
                 if (noImage) break
                 send(Triple(beginOffsetOfB64, endOffsetOfB64, uuid))
-                if (leadingOffsetSet.contains(nextOffset)) break
+                if (leadingOffsetSet.contains(nextOffset)) {
+                    break
+                }
             }
-            LOGGER.info("[$rank/$totalProducerCount] Sunday algorithm ended.")
+            LOGGER.info("[P${rank+1}/$totalProducerCount] Sunday algorithm ended.")
             this.channel.close()
         }
 
-    // private val mtx = Mutex()
     private fun updateProgress(relativeOffset: Long, chunkSize: Long) =
         CoroutineScope(MainUIDispatcher).launch {
-            // mtx.withLock {
             if (progress == null) return@launch
-            progress.value = max(progress.value, relativeOffset.toFloat() / chunkSize.toFloat())
-            // }
+            progress.value = max(progress.value, relativeOffset.toFloat() / chunkSize.toFloat()).coerceAtMost(1F)
         }
 }
