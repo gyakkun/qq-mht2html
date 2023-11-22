@@ -1,4 +1,6 @@
-![](src/jvmMain/resources/drawables/qq-mht2html.png)
+<div align="center">
+<img src="src/jvmMain/resources/drawables/qq-mht2html.png" weight="384x" height="384px" />
+</div>
 
 # QQ MHT2HTML
 
@@ -19,10 +21,26 @@
 * 基于JVM, 比较吃内存
 
 ## 测试数据
+<details>
 
+<summary>v1.3.0 及以上版本能更好利用多核心, 相较以往版本有15%以上的性能提升</summary>
+<br/><br/>
 环境: Desktop R5-3500X@<!-- -->Fixed4.3GHz(6C6T)/32G@<!-- -->3200MHz/Kioxia CD6 SSD, Win10 21H2, Windows Defender 主动防护关
 
-输入: 183G, 内含45万张图片, 约600万行聊天记录
+输入: 183GB, 内含45万张图片, 约600万行聊天记录
+
+耗时: 总耗时~596s
+
+-------------------------
+<br/><br/>
+</details>
+
+<details>
+<summary>v1.2.x 版本测试数据</summary>
+<br/><br/>
+环境: Desktop R5-3500X@<!-- -->Fixed4.3GHz(6C6T)/32G@<!-- -->3200MHz/Kioxia CD6 SSD, Win10 21H2, Windows Defender 主动防护关
+
+输入: 183GB, 内含45万张图片, 约600万行聊天记录
 
 耗时: 总耗时~740s
 
@@ -30,7 +48,7 @@
 
 环境: 同上
 
-输入: 27G, 内含7万张图片, 约36万行聊天记录
+输入: 27GB, 内含7万张图片, 约36万行聊天记录
 
 耗时: 总耗时~110s
 
@@ -61,7 +79,7 @@
 
 环境: Desktop R5-3500X@<!-- -->Fixed4.3GHz(6C6T)/32G@<!-- -->3200MHz/Kioxia CD6 SSD, Win10 21H2, Windows Defender 主动防护关
 
-输入: 50G, 内含10万张图片, 约80万行聊天记录
+输入: 50GB, 内含10万张图片, 约80万行聊天记录
 
 耗时: 总耗时~150s
 
@@ -120,6 +138,7 @@
 输入: 同上
 
 耗时: 总耗时~680s
+</details>
 
 ## 参考
 
