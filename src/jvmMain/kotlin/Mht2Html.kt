@@ -156,6 +156,7 @@ class Mht2Html(
         LOGGER.info("Img folder: $imgOutputPath")
         LOGGER.info("Line limit: $lineLimit")
         LOGGER.info("Thread count: $threadCount")
+        LOGGER.info("Available CPU core count: ${Runtime.getRuntime().availableProcessors()}")
 
         showInfoBar(showAlert, errMsg, "Processing Images...", -1L)
         filenameCounter.clear()
