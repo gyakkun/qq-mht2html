@@ -23,7 +23,7 @@
 ## 测试数据
 <details>
 
-<summary>v1.3.0 及以上版本能更好利用多核心, 相较以往版本有15%以上的性能提升</summary>
+<summary>v1.3.0 及以上版本能更好利用多核心, 相较以往版本有20%以上的速度提升</summary>
 <br/><br/>
 环境: Desktop R5-3500X@<!-- -->Fixed4.3GHz(6C6T)/32G@<!-- -->3200MHz/Kioxia CD6 SSD, Win10 21H2, Windows Defender 主动防护关
 
