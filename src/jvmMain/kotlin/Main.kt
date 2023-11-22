@@ -1,7 +1,5 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
-@file:OptIn(ExperimentalMaterialApi::class)
-
 import LoggingHelper.LOGGER
+import Mht2Html.Constants.DefaultConfig.DEFAULT_LINE_LIMIT
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -13,7 +11,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import org.jetbrains.skiko.MainUIDispatcher
 import org.slf4j.LoggerFactory
 import java.io.File
 import javax.swing.JFileChooser
@@ -38,19 +40,18 @@ fun main() = application {
 }
 
 
-@OptIn(ExperimentalMaterialApi::class, ExperimentalCoroutinesApi::class)
 @Composable
 private fun App(windowScope: FrameWindowScope) {
     var threadCountStr by remember { mutableStateOf(Runtime.getRuntime().availableProcessors().toString()) }
-    var lineLimitStr by remember { mutableStateOf("${Mht2Html.DEFAULT_LINE_LIMIT}") }
+    var lineLimitStr by remember { mutableStateOf("$DEFAULT_LINE_LIMIT") }
     var mhtFileLocation by remember { mutableStateOf("C:\\Windows\\notepad.exe") }
     var fileOutputLocation by remember { mutableStateOf("C:\\") }
     var imgFileOutputFolder by remember { mutableStateOf("img") }
     val errMsg = remember { mutableStateOf("Error message.") }
     val showAlert = remember { mutableStateOf(false) }
     val progress = remember { mutableStateOf(0.0F) }
-    var noImage = remember { mutableStateOf(false) }
-    var noHtml = remember { mutableStateOf(false) }
+    val noImage = remember { mutableStateOf(false) }
+    val noHtml = remember { mutableStateOf(false) }
 
     Surface {
         if (showAlert.value) {
@@ -142,7 +143,7 @@ private fun App(windowScope: FrameWindowScope) {
                         modifier = Modifier.height(60.dp)
                             .weight(0.5F, false),
                         placeholder = {
-                            Text("${Mht2Html.DEFAULT_LINE_LIMIT}")
+                            Text("${DEFAULT_LINE_LIMIT}")
                         }
                     )
                 }
@@ -171,7 +172,7 @@ private fun App(windowScope: FrameWindowScope) {
                     Button(
                         enabled = progress.value < 0.0001F || progress.value > 0.9999F,
                         onClick = {
-                            GlobalScope.launch {
+                            CoroutineScope(MainUIDispatcher).launch {
 
                                 val mhtFile = File(mhtFileLocation)
                                 if (!mhtFile.exists() || mhtFile.isDirectory) {
@@ -203,7 +204,7 @@ private fun App(windowScope: FrameWindowScope) {
                                     LOGGER.info("Thread count invalid. Using core number.")
                                 }
 
-                                var lineLimit = Mht2Html.DEFAULT_LINE_LIMIT
+                                var lineLimit = DEFAULT_LINE_LIMIT
                                 kotlin.runCatching {
                                     lineLimit = Integer.parseInt(lineLimitStr)
                                     if (lineLimit <= 500) lineLimit = 500
@@ -211,19 +212,16 @@ private fun App(windowScope: FrameWindowScope) {
                                     LOGGER.info("Thread count invalid. Using default 7500.")
                                 }
 
-
-                                Mht2Html.doJob(
+                                Mht2Html(
+                                    showAlert, errMsg, progress,
                                     mhtFileLocation,
                                     fileOutputLocation,
                                     imgOutputFolder.absolutePath,
                                     threadCount,
                                     lineLimit,
-                                    showAlert,
-                                    errMsg,
-                                    progress,
-                                    noImage = noImage.value,
-                                    noHtml = noHtml.value
-                                )
+                                    noHtml.value,
+                                    noImage.value
+                                ).doJob()
                             }
                         }) {
                         Text("START")
@@ -252,14 +250,13 @@ suspend fun showInfoBar(
     errMsg: MutableState<String>?,
     msg: String,
     delayMs: Long = 1_000L
-) = coroutineScope {
-    launch {
-        showAlert?.value = true
-        errMsg?.value = msg
-        LOGGER.info(msg)
-        if (delayMs < 0) return@launch
-        delay(delayMs)
-        showAlert?.value = false
-        errMsg?.value = ""
-    }
+) = CoroutineScope(MainUIDispatcher).launch {
+    showAlert?.value = true
+    errMsg?.value = msg
+    LOGGER.info(msg)
+    if (delayMs < 0) return@launch
+    delay(delayMs)
+    showAlert?.value = false
+    errMsg?.value = ""
 }
+
