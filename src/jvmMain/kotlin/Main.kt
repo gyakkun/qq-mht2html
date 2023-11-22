@@ -12,7 +12,6 @@ import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.skiko.MainUIDispatcher
@@ -25,10 +24,12 @@ object LoggingHelper {
     val LOGGER = LoggerFactory.getLogger(LoggingHelper.javaClass)
 }
 
+val version = System.getProperty("jpackage.app-version", "DEV")
+
 fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
-        title = "QQ MHT2HTML",
+        title = "QQ MHT2HTML $version",
         icon = painterResource("/drawables/qq-mht2html.png"),
     ) {
         val windowScope = this

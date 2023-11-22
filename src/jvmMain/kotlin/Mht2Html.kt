@@ -151,6 +151,7 @@ class Mht2Html(
 
     @OptIn(DelicateCoroutinesApi::class)
     fun doJob() = CoroutineScope(Dispatchers.IO).launch {
+        LOGGER.info("Job started. QQ-MHT2HTML - $version")
         LOGGER.info("Start to process input file: $fileLocation")
         LOGGER.info("Output location: $fileOutputPath")
         LOGGER.info("Img folder: $imgOutputPath")
