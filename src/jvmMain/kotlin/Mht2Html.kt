@@ -36,8 +36,6 @@ import androidx.compose.runtime.MutableState
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.produce
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import org.apache.commons.codec.binary.Base64
 import org.apache.commons.imaging.Imaging
 import org.apache.commons.text.StringEscapeUtils
@@ -165,27 +163,31 @@ class Mht2Html(
         val tp = newFixedThreadPoolContext(threadCount + 1, "mht2html") // 1 more thread for producer
         val timing: Long = System.currentTimeMillis()
         val raf = RandomAccessFile(fileLocation, "r")
-        val latch = CountDownLatch(threadCount)
+        val imageLatch = CountDownLatch(threadCount)
 
         val processImgResult = processImage(
             randomAccessFile = raf,
-            latch = latch,
+            latch = imageLatch,
             coroutineContext = null,
         )
 
         if (!processImgResult) return@launch
 
-        latch.await()
+        imageLatch.await()
 
         LOGGER.info("Image: Timing: ${System.currentTimeMillis() - timing} ms")
+        LOGGER.info("leadingOffsetSet={}", leadingOffsetSet.sorted())
 
-        showInfoBar(showAlert, errMsg, "Processing HTML...", -1L)
+        showInfoBar(showAlert, errMsg, "Images done. Processing HTML...", -1L)
+        updateProgress(0L, 1L)
 
+        val htmlLatch = CountDownLatch(1)
         if (!noHtml) {
             CoroutineScope(Dispatchers.IO).launch {
-                processHtml()
+                processHtml(htmlLatch)
             }
         }
+        htmlLatch.await()
 
         val timingMsg = "TOTAL: Timing: ${System.currentTimeMillis() - timing} ms"
         LOGGER.info(timingMsg)
@@ -274,7 +276,7 @@ class Mht2Html(
     }
 
 
-    private suspend fun processHtml() {
+    private suspend fun processHtml(latch: CountDownLatch) {
         LOGGER.info("Start processing html.")
 
         val styleClassNameMap = ConcurrentHashMap<String, String>()
@@ -323,11 +325,11 @@ class Mht2Html(
             // Count Lines
 
             // 1) How many lines from the head of file to end point of the HTML part
-            val lineNoEndOfHtml = countLineOfFileUntilTarget(fileLocation, END_OF_HTML)
+            val lineNoEndOfHtml = countLineOfFileUntilStartingWithTarget(fileLocation, END_OF_HTML)
             LOGGER.info("Q: How many lines from the head of file to end point of the HTML part? A: $lineNoEndOfHtml")
 
             // 2) How many lines from the head of file to start point of the HTML part
-            val lineNoStartOfHtml = countLineOfFileUntilTarget(fileLocation, "<html")
+            val lineNoStartOfHtml = countLineOfFileUntilStartingWithTarget(fileLocation, "<html")
             LOGGER.info("Q: How many lines from the head of file to start point of the HTML part? A: $lineNoStartOfHtml")
 
             // 3) Get how many lines of the html part
@@ -391,7 +393,10 @@ class Mht2Html(
                                             msgContact
                                         )
                                         msgContact = newMsgContact
-                                        assert(newDate != null)
+                                        assert(newDate != null) {
+                                            LOGGER.error("New date is null!")
+                                            "New date is null!"
+                                        }
                                         if (newDate != null) {
                                             dateForHtmlHead = newDate
                                         }
@@ -449,6 +454,8 @@ class Mht2Html(
                 "Exception occurred at line ${outerLineCounter.get()}. Please check log and raise a Github issue for support.",
                 -1L
             )
+        } finally {
+            latch.countDown()
         }
     }
 
@@ -470,7 +477,7 @@ class Mht2Html(
             }
     }
 
-    private fun countLineOfFileUntilTarget(fileLocation: String, targetOffset: String): Int {
+    private fun countLineOfFileUntilStartingWithTarget(fileLocation: String, target: String): Int {
         var tmpLine: String
         var lineCount = 0
 
@@ -478,7 +485,7 @@ class Mht2Html(
             BufferedReader(fr).use { bfr ->
                 while (bfr.readLine().also { tmpLine = it } != null) {
                     lineCount++
-                    if (tmpLine.startsWith(targetOffset)) break
+                    if (tmpLine.startsWith(target)) break
                 }
             }
         }
@@ -739,7 +746,6 @@ class Mht2Html(
 
     data class PerLineExtractResult(val extractedAndReplaced: String, val newDate: Date?)
 
-    private val writtenFilenameSet = ConcurrentHashMap.newKeySet<String>()
     private fun CoroutineScope.launchConsumer(
         producerRank: Int,
         consumerRank: Int,
@@ -752,9 +758,6 @@ class Mht2Html(
             val beginOffsetOfB64 = msg.first
             val endOffsetOfB64 = msg.second
             val uuid = msg.third
-            if (writtenFilenameSet.contains(uuid)) {
-                LOGGER.error("$uuid already written!")
-            }
             val b64Len = endOffsetOfB64 - beginOffsetOfB64
             val ba = ByteArray(b64Len.toInt())
             lRaf.seek(beginOffsetOfB64)
@@ -775,7 +778,6 @@ class Mht2Html(
                     bfos.flush()
                 }
             }
-            writtenFilenameSet.add(uuid)
         }
         LOGGER.info("[P${producerRank + 1}:C${consumerRank + 1}] Consumer shutting down...")
         latch.countDown()
@@ -793,7 +795,7 @@ class Mht2Html(
             var nextOffset: Long
             val sunday = Sunday(raf, initOffset, boundaryText.toByteArray())
             var previousOffset = -1L
-            var shouldBreak = false
+            var shouldBreak = noImage && rank != 0
             var counter = 0
             LOGGER.info("[P${rank + 1}/$totalProducerCount] Running Sunday algorithm to locate boundary")
             while (sunday.getNextOffSet().also { nextOffset = it } > 0L) {
@@ -826,17 +828,19 @@ class Mht2Html(
                 previousOffset = nextOffset
                 if (noImage) break
                 send(Triple(beginOffsetOfB64, endOffsetOfB64, uuid))
-                if (leadingOffsetSet.contains(nextOffset)) {
-                    break
-                }
             }
-            LOGGER.info("[P${rank+1}/$totalProducerCount] Sunday algorithm ended.")
+            LOGGER.info("[P${rank + 1}/$totalProducerCount] Sunday algorithm ended.")
             this.channel.close()
+            updateProgress(0L, 1L)
+            showInfoBar(showAlert, errMsg, "[P${rank + 1}/$totalProducerCount] Image producer done. Waiting for other producers...", -1L)
         }
 
     private fun updateProgress(relativeOffset: Long, chunkSize: Long) =
         CoroutineScope(MainUIDispatcher).launch {
             if (progress == null) return@launch
-            progress.value = max(progress.value, relativeOffset.toFloat() / chunkSize.toFloat()).coerceAtMost(1F)
+            if (relativeOffset == 0L)
+                progress.value = 0F
+            else
+                progress.value = max(progress.value, relativeOffset.toFloat() / chunkSize.toFloat()).coerceAtMost(1F)
         }
 }
