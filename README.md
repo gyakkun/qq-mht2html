@@ -1,5 +1,5 @@
 <div align="center">
-<img src="src/jvmMain/resources/drawables/qq-mht2html.png" weight="384x" height="384px" />
+<img src="src/main/resources/drawables/qq-mht2html.png" weight="384x" height="384px" />
 </div>
 
 # QQ MHT2HTML

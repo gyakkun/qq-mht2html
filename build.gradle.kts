@@ -1,8 +1,9 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
-    kotlin("multiplatform")
+    kotlin("jvm")
     id("org.jetbrains.compose")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 group = "moe.nyamori"
@@ -14,37 +15,23 @@ repositories {
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
 }
 
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
- }
-
-kotlin {
-    jvm {
-        compilations.all {
-             kotlinOptions.jvmTarget = "21"
-        }
-        withJava()
-    }
-    sourceSets {
-        val jvmMain by getting {
-            dependencies {
-                implementation(compose.desktop.currentOs)
-                implementation("org.apache.commons:commons-imaging:1.0-alpha3")
-                implementation("commons-codec:commons-codec:1.16.0")
-                implementation("org.apache.commons:commons-text:1.11.0")
+dependencies {
+    // Note, if you develop a library, you should use compose.desktop.common.
+    // compose.desktop.currentOs should be used in launcher-sourceSet
+    // (in a separate module for demo project and in testMain).
+    // With compose.desktop.common you will also lose @Preview functionality
+    implementation(compose.desktop.currentOs)
+    implementation("org.apache.commons:commons-imaging:1.0.0-alpha5")
+    implementation("commons-codec:commons-codec:1.17.1")
+    implementation("org.apache.commons:commons-text:1.12.0")
 
 
-                // Logging
-                implementation("org.slf4j:slf4j-api:2.0.9")
-                implementation("org.slf4j:jul-to-slf4j:2.0.9")
-                implementation("ch.qos.logback:logback-classic:1.4.11")
-            }
-        }
-        val jvmTest by getting
-    }
+    // Logging
+    implementation("org.slf4j:slf4j-api:2.0.16")
+    implementation("org.slf4j:jul-to-slf4j:2.0.16")
+    implementation("ch.qos.logback:logback-classic:1.5.7")
 }
+
 
 compose.desktop {
     application {
@@ -67,7 +54,7 @@ compose.desktop {
                 "java.desktop",
             )
 
-            val iconsRoot = project.file("src/jvmMain/resources/drawables")
+            val iconsRoot = project.file("src/main/resources/drawables")
 
             linux {
                 iconFile.set(iconsRoot.resolve("qq-mht2html.png"))
