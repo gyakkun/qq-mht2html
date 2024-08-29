@@ -292,7 +292,7 @@ class Mht2Html(
         var htmlHeadTemplate: String
         var globalStyleSheet: String
         var startDateInUTC: Date
-        var firstLine: String = ""
+        var firstLine = ""
         val outerLineCounter = AtomicInteger(0)
 
         try {

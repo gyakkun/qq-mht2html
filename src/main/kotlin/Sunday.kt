@@ -27,6 +27,7 @@ class Sunday(
             }
         }
 
+    @Suppress("MemberVisibilityCanBePrivate")
     fun getNextOffSet(): Long {
         if (rafOffSet >= raf.length()) return -1L
         outer@

@@ -144,7 +144,7 @@ private fun App(windowScope: FrameWindowScope) {
                         modifier = Modifier.height(60.dp)
                             .weight(0.5F, false),
                         placeholder = {
-                            Text("${DEFAULT_LINE_LIMIT}")
+                            Text("$DEFAULT_LINE_LIMIT")
                         }
                     )
                 }
@@ -246,7 +246,7 @@ private fun App(windowScope: FrameWindowScope) {
 
 }
 
-suspend fun showInfoBar(
+fun showInfoBar(
     showAlert: MutableState<Boolean>?,
     errMsg: MutableState<String>?,
     msg: String,

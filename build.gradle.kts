@@ -42,7 +42,7 @@ compose.desktop {
 
             packageVersion = project.version as String
             description = "QQ Mht2html"
-            copyright = "(C) 2022-2023 gyakkun. Some rights reserved."
+            copyright = "(C) 2022-2024 gyakkun. Some rights reserved."
             vendor = "gyakkun"
             appResourcesRootDir.set(project.layout.projectDirectory.dir("resources"))
             // includeAllModules = true
