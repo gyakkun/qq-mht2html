@@ -22,14 +22,14 @@ dependencies {
     // With compose.desktop.common you will also lose @Preview functionality
     implementation(compose.desktop.currentOs)
     implementation("org.apache.commons:commons-imaging:1.0.0-alpha5")
-    implementation("commons-codec:commons-codec:1.17.1")
-    implementation("org.apache.commons:commons-text:1.12.0")
+    implementation("commons-codec:commons-codec:1.17.2")
+    implementation("org.apache.commons:commons-text:1.13.0")
 
 
     // Logging
     implementation("org.slf4j:slf4j-api:2.0.16")
     implementation("org.slf4j:jul-to-slf4j:2.0.16")
-    implementation("ch.qos.logback:logback-classic:1.5.8")
+    implementation("ch.qos.logback:logback-classic:1.5.16")
 }
 
 
@@ -42,7 +42,7 @@ compose.desktop {
 
             packageVersion = project.version as String
             description = "QQ Mht2html"
-            copyright = "(C) 2022-2024 gyakkun. Some rights reserved."
+            copyright = "(C) 2022-2025 gyakkun. Some rights reserved."
             vendor = "gyakkun"
             appResourcesRootDir.set(project.layout.projectDirectory.dir("resources"))
             // includeAllModules = true
