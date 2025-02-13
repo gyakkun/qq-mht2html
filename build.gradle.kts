@@ -36,6 +36,13 @@ dependencies {
 compose.desktop {
     application {
         mainClass = "MainKt"
+        buildTypes.release.proguard {
+//             configurationFiles.from("rules.pro")
+//             version.set("7.6.1")
+//             obfuscate.set(false)
+//             optimize.set(false)
+            isEnabled.set(false)
+        }
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "QQ Mht2html"

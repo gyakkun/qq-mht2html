@@ -159,3 +159,8 @@
 
 * https://github.com/a645162/QQChatRecordMhtToHtmlTool (已经删除/私有。其中一个Fork: https://github.com/bushrose/QQChatRecordMhtToHtmlTool)
 * 图标: https://www.pixiv.net/artworks/91517955
+
+## 另见
+
+* 直接解密Msg3.0.db: https://github.com/QQBackup/qq-win-db-key
+* 解析解密后的字段: https://github.com/Akegarasu/qmsg-unpacker
